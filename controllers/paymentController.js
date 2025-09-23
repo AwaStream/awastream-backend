@@ -7,32 +7,86 @@ const crypto = require('crypto');
 // @desc    Initialize a payment for a video
 // @route   POST /api/payments/initialize
 // @access  Private
+
 const initializeVideoPayment = asyncHandler(async (req, res) => {
-    const { videoId } = req.body;
-    const user = req.user;
-
-     const video = await Video.findById(videoId).populate('creator');
-    if (!video) {
-        res.status(404);
-        throw new Error('Video not found');
-    }
-    const internalRef = `AWAS-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-
-    // Create a pending transaction record
-    await Transaction.create({
-        viewer: user._id,
-        video: video._id,
-        creator: video.creator._id,
-        amountKobo: video.priceKobo,
-        status: 'pending',
-        internalRef: internalRef,
-    });
+    console.log('--- [PaymentController] ENTERED initializeVideoPayment ---');
     
-    // Call payment service to get the payment URL
-    const paymentData = await initializePayment(user.email, video.priceKobo, internalRef);
+    try {
+        const { videoId } = req.body;
+        const user = req.user;
 
-    res.status(200).json({ authorizationUrl: paymentData.authorization_url });
+        console.log(`[PaymentController] 1. Received videoId from frontend: ${videoId}`);
+        console.log(`[PaymentController] 2. Authenticated user ID: ${user._id}`);
+
+        if (!videoId) {
+            console.error('[PaymentController] FAILED at step 1: videoId is missing from request body.');
+            res.status(400);
+            throw new Error('videoId is required.');
+        }
+
+        const video = await Video.findById(videoId).populate('creator');
+        
+        if (!video) {
+            console.error(`[PaymentController] FAILED at step 3: Video not found in database for ID: ${videoId}`);
+            res.status(404);
+            throw new Error('Video not found');
+        }
+        console.log(`[PaymentController] 3. Found video in database: "${video.title}" created by ${video.creator.userName}`);
+
+        const internalRef = `AWAS-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+
+        await Transaction.create({
+            viewer: user._id,
+            video: video._id,
+            creator: video.creator._id, 
+            amountKobo: video.priceKobo,
+            status: 'pending',
+            internalRef: internalRef,
+        });
+        console.log(`[PaymentController] 4. Created pending transaction with ref: ${internalRef}`);
+        
+        console.log(`[PaymentController] 5. Calling Paystack service for user ${user.email} and amount ${video.priceKobo}...`);
+        const paymentData = await initializePaystack(user.email, video.priceKobo, internalRef);
+        console.log('[PaymentController] 6. Received authorization URL from Paystack.');
+
+        res.status(200).json({ authorizationUrl: paymentData.authorization_url });
+        console.log('--- [PaymentController] EXITED initializeVideoPayment successfully ---');
+
+    } catch (error) {
+        console.error('--- [PaymentController] CRASH in initializeVideoPayment ---');
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        throw error;
+    }
 });
+
+
+// const initializeVideoPayment = asyncHandler(async (req, res) => {
+//     const { videoId } = req.body;
+//     const user = req.user;
+
+//      const video = await Video.findById(videoId).populate('creator');
+//     if (!video) {
+//         res.status(404);
+//         throw new Error('Video not found');
+//     }
+//     const internalRef = `AWAS-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+
+//     // Create a pending transaction record
+//     await Transaction.create({
+//         viewer: user._id,
+//         video: video._id,
+//         creator: video.creator._id,
+//         amountKobo: video.priceKobo,
+//         status: 'pending',
+//         internalRef: internalRef,
+//     });
+    
+//     // Call payment service to get the payment URL
+//     const paymentData = await initializePayment(user.email, video.priceKobo, internalRef);
+
+//     res.status(200).json({ authorizationUrl: paymentData.authorization_url });
+// });
 
 
 // @desc    Handle incoming webhook from payment provider
