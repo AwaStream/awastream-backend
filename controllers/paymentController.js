@@ -77,7 +77,53 @@ const handlePaymentWebhook = asyncHandler(async (req, res) => {
     res.sendStatus(200);
 });
 
+
+/**
+ * @desc    Verify a payment from the frontend after redirect
+ * @route   POST /api/payments/verify
+ * @access  Private
+ */
+const verifyViewerPayment = asyncHandler(async (req, res) => {
+    const { reference } = req.body;
+    
+    // Find our internal transaction record and populate the video's slug
+    const transaction = await Transaction.findOne({ internalRef: reference, viewer: req.user.id })
+        .populate('video', 'shareableSlug');
+
+    if (!transaction) {
+        res.status(404);
+        throw new Error('Transaction not found or does not belong to user.');
+    }
+    
+    // Even if our webhook has already processed it, we can still return success.
+    if (transaction.status === 'successful') {
+        return res.status(200).json({ 
+            status: 'successful', 
+            videoSlug: transaction.video.shareableSlug 
+        });
+    }
+
+    // If webhook hasn't run yet, we can optionally re-verify with Paystack here
+    const verification = await verifyPayment(reference);
+    
+    if (verification.status === 'success') {
+         // Update our transaction if needed (though webhook is the primary method)
+        if (transaction.status === 'pending') {
+            transaction.status = 'successful';
+            // You can also calculate commission here as a fallback
+            await transaction.save();
+        }
+        res.status(200).json({ 
+            status: 'successful', 
+            videoSlug: transaction.video.shareableSlug 
+        });
+    } else {
+        res.status(400).json({ status: 'failed', message: 'Payment not confirmed by provider.' });
+    }
+});
+
 module.exports = {
     initializeVideoPayment,
     handlePaymentWebhook,
+    verifyViewerPayment,
 };

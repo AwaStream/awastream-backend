@@ -1,12 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const { initializeVideoPayment, handlePaymentWebhook } = require('../controllers/paymentController');
+// --- Add verifyViewerPayment to the import ---
+const { initializeVideoPayment, handlePaymentWebhook, verifyViewerPayment } = require('../controllers/paymentController');
 const { authenticate } = require('../middleware/authMiddleware');
 
-// A logged-in user initializes a payment
+// Initialize a payment (user must be logged in)
 router.post('/initialize', authenticate, initializeVideoPayment);
 
-// The public webhook that the payment provider calls
+// Verify a payment after redirect (user must be logged in)
+router.post('/verify', authenticate, verifyViewerPayment);
+
+// Handle Paystack webhook (public, but signature is verified in controller)
 router.post('/webhook', handlePaymentWebhook);
 
 module.exports = router;
