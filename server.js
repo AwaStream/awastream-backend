@@ -2,6 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const passport = require('passport');
+const cookieParser = require('cookie-parser') 
 const connectDB = require('./config/db');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
@@ -19,10 +20,11 @@ app.use(cors());
 
 // Body parser middleware to accept JSON data
 app.use(express.json());
+app.use(cookieParser());
 
 // Passport middleware for authentication
 app.use(passport.initialize());
-require('./config/passport-setup'); // This configures our Google strategy
+require('./config/passport-setup');
 
 // --- API Routes ---
 const authRoutes = require('./routes/authRoutes');
