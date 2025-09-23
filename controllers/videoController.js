@@ -1,54 +1,70 @@
 const asyncHandler = require('express-async-handler');
 const Video = require('../models/Video');
-const User = require('../models/User');
+const crypto = require('crypto');
 const Transaction = require('../models/Transaction');
-const { fetchVideoDetails } = require('../services/youtubeService');
-const { getYouTubeVideoId } = require('../utils/videoUtils'); // We will create this utility
+const { fetchVideoDetails, getYouTubeVideoId } = require('../services/youtubeService');
 
-// @desc    Monetize a new YouTube video
-// @route   POST /api/videos
-// @access  Private (Creator)
+
+/**
+ * @desc    Monetize a new video
+ * @route   POST /api/v1/videos
+ * @access  Private (Creator)
+ */
+
 const createVideo = asyncHandler(async (req, res) => {
-    const { youtubeUrl, price } = req.body;
-    const creatorId = req.user._id;
+    const { youtubeUrl, priceNaira } = req.body;
+    const creatorId = req.user.id;
 
-    // ADD THIS LINE FOR DEBUGGING:
-    console.log('[DEBUG] Received youtubeUrl:', youtubeUrl);
-
-
-    if (!youtubeUrl || !price) {
+    if (!youtubeUrl || priceNaira === undefined) {
         res.status(400);
         throw new Error('Please provide a YouTube URL and a price.');
     }
+    
+    const priceValue = parseFloat(priceNaira);
 
-    const youtubeVideoId = getYouTubeVideoId(youtubeUrl);
-    if (!youtubeVideoId) {
+    if (isNaN(priceValue) || priceValue < 150) {
         res.status(400);
-        throw new Error('Invalid YouTube URL provided.');
+        throw new Error('Price must be at least 150 Naira.');
     }
 
-    const videoDetails = await fetchVideoDetails(youtubeVideoId);
-    if (!videoDetails) {
-        res.status(404);
-        throw new Error('Video could not be found on YouTube.');
+    const videoDetails = await fetchVideoDetails(youtubeUrl);
+    const youtubeVideoId = getYouTubeVideoId(youtubeUrl);
+
+    if (!videoDetails || !youtubeVideoId) {
+        res.status(400);
+        throw new Error('The provided YouTube URL is invalid or the video could not be found.');
     }
 
     const { title, thumbnailUrl, description } = videoDetails;
-    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + `-${Date.now().toString().slice(-6)}`;
-    const priceKobo = Math.round(price * 100);
 
-    const video = await Video.create({
+    const baseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const randomBytes = crypto.randomBytes(4).toString('hex');
+    const shareableSlug = `${baseSlug}-${randomBytes}`;
+
+    const priceKobo = Math.round(priceValue * 100);
+
+    const videoObjectToSave = {
         creator: creatorId,
+        youtubeUrl: youtubeUrl,
         youtubeVideoId,
         title,
         thumbnailUrl,
         description,
+        priceNaira: priceValue,
         priceKobo,
-        shareableSlug: slug,
-    });
+        shareableSlug,
+    };
+    
+    const newVideo = await Video.create(videoObjectToSave);
 
-    res.status(201).json(video);
+    if (newVideo) {
+        res.status(201).json(newVideo);
+    } else {
+        res.status(500); 
+        throw new Error('Failed to create the video in the database after validation.');
+    }
 });
+
 
 // @desc    Get a single video by its slug for public viewing
 // @route   GET /api/videos/:slug
