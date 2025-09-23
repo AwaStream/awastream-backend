@@ -9,4 +9,7 @@ router.post('/', authenticate, authorize('creator'), createVideo);
 // Get a video's public details
 router.get('/:slug', getVideoBySlug);
 
+// Get a video access status
+router.get('/:slug/access-status', authenticate, checkVideoAccess);
+
 module.exports = router;

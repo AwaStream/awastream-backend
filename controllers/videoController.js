@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const Video = require('../models/Video');
 const User = require('../models/User');
+const Transaction = require('../models/Transaction');
 const { fetchVideoDetails } = require('../services/youtubeService');
 const { getYouTubeVideoId } = require('../utils/videoUtils'); // We will create this utility
 
@@ -64,7 +65,28 @@ const getVideoBySlug = asyncHandler(async (req, res) => {
     }
 });
 
+const checkVideoAccess = asyncHandler(async (req, res) => {
+    const video = await Video.findOne({ shareableSlug: req.params.slug });
+    if (!video) {
+        res.status(404);
+        throw new Error('Video not found');
+    }
+
+    const transaction = await Transaction.findOne({
+        viewer: req.user._id,
+        video: video._id,
+        status: 'successful'
+    });
+
+    if (transaction) {
+        res.status(200).json({ hasAccess: true });
+    } else {
+        res.status(200).json({ hasAccess: false });
+    }
+});
+
 module.exports = {
     createVideo,
     getVideoBySlug,
+    checkVideoAccess, // Export the new function
 };
