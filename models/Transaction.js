@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const TransactionSchema = new mongoose.Schema({
     viewer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, 
+    creator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     video: { type: mongoose.Schema.Types.ObjectId, ref: 'Video', required: true },
     amountKobo: { type: Number, required: true }, // Gross amount paid by viewer
     commissionKobo: { type: Number, required: true }, // AwaStream's 15% cut

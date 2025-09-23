@@ -11,18 +11,18 @@ const initializeVideoPayment = asyncHandler(async (req, res) => {
     const { videoId } = req.body;
     const user = req.user;
 
-    const video = await Video.findById(videoId);
+     const video = await Video.findById(videoId).populate('creator');
     if (!video) {
         res.status(404);
         throw new Error('Video not found');
     }
-
     const internalRef = `AWAS-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
 
     // Create a pending transaction record
     await Transaction.create({
         viewer: user._id,
         video: video._id,
+        creator: video.creator._id,
         amountKobo: video.priceKobo,
         status: 'pending',
         internalRef: internalRef,
@@ -56,7 +56,9 @@ const handlePaymentWebhook = asyncHandler(async (req, res) => {
 
             if (verification.status === 'success') {
                 const grossAmountKobo = verification.amount;
-                const commissionKobo = Math.round(grossAmountKobo * 0.15);
+
+                const commissionRate = 0.15;
+                const commissionKobo = Math.round(grossAmountKobo * commissionRate);
                 const creatorEarningsKobo = grossAmountKobo - commissionKobo;
 
                 transaction.status = 'successful';
