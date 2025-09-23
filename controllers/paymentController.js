@@ -46,7 +46,7 @@ const initializeVideoPayment = asyncHandler(async (req, res) => {
         console.log(`[PaymentController] 4. Created pending transaction with ref: ${internalRef}`);
         
         console.log(`[PaymentController] 5. Calling Paystack service for user ${user.email} and amount ${video.priceKobo}...`);
-        const paymentData = await initializePaystack(user.email, video.priceKobo, internalRef);
+        const paymentData = await initializePayment(user.email, video.priceKobo, internalRef);
         console.log('[PaymentController] 6. Received authorization URL from Paystack.');
 
         res.status(200).json({ authorizationUrl: paymentData.authorization_url });
