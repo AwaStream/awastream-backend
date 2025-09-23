@@ -1,0 +1,12 @@
+const express = require('express');
+const router = express.Router();
+const { createVideo, getVideoBySlug } = require('../controllers/videoController');
+const { authenticate, authorize } = require('../middleware/authMiddleware');
+
+// Monetize a new video (only creators can do this)
+router.post('/', authenticate, authorize('creator'), createVideo);
+
+// Get a video's public details
+router.get('/:slug', getVideoBySlug);
+
+module.exports = router;
