@@ -43,7 +43,7 @@ const sendTokenResponse = (user, statusCode, res) => {
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = asyncHandler(async (req, res) => {
-    const { firstName, lastName, userName, email, password, role } = req.body;
+    const { firstName, lastName, userName, email, password } = req.body;
 
     if (!firstName || !lastName || !userName || !email || !password) {
         res.status(400);
@@ -64,7 +64,6 @@ const registerUser = asyncHandler(async (req, res) => {
         lastName,
         userName,
         email,
-        role,
         passwordHash,
         authMethod: 'local',
     });
