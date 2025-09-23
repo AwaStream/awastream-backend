@@ -15,11 +15,7 @@ connectDB();
 const app = express();
 
 // --- Middleware ---
-// Enable CORS (Cross-Origin Resource Sharing)
-app.use(cors({
-    origin: process.env.FRONTEND_URL, // Allow requests from your React frontend
-    credentials: true,
-}));
+app.use(cors());
 
 // Body parser middleware to accept JSON data
 app.use(express.json());
