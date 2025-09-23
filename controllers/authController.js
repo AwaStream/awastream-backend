@@ -21,6 +21,7 @@ const sendTokenResponse = (user, statusCode, res) => {
         httpOnly: true, // Prevents client-side JS from accessing the cookie
         secure: process.env.NODE_ENV === 'production', // Only send cookie over HTTPS
         sameSite: 'strict', // Helps mitigate CSRF attacks
+        path: '/',
     };
 
     res.cookie('refreshToken', refreshToken, cookieOptions);
@@ -123,6 +124,7 @@ const googleCallback = asyncHandler(async (req, res) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
+        path: '/',
     };
 
     res.cookie('refreshToken', refreshToken, cookieOptions);
