@@ -8,11 +8,11 @@ const passport = require('passport');
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = asyncHandler(async (req, res) => {
-    const { displayName, email, password } = req.body;
+    const { firstName, lastName, userName, email, password, role } = req.body;
 
-    if (!displayName || !email || !password) {
+    if (!firstName || !lastName || !userName || !email || !password) {
         res.status(400);
-        throw new Error('Please provide all required fields: displayName, email, password.');
+        throw new Error('Please provide all required fields: firstName, lastName, userName, email, password.');
     }
 
     const userExists = await User.findOne({ email });
@@ -26,7 +26,9 @@ const registerUser = asyncHandler(async (req, res) => {
     const passwordHash = await bcrypt.hash(password, salt);
 
     const user = await User.create({
-        displayName,
+        firstName,
+        lastName,
+        userName,
         email,
         passwordHash, // Save the pre-hashed password
         authMethod: 'local',
@@ -35,7 +37,9 @@ const registerUser = asyncHandler(async (req, res) => {
     if (user) {
         res.status(201).json({
             _id: user._id,
-            displayName: user.displayName,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            userName: user.userName,
             email: user.email,
             role: user.role,
             token: generateToken(user._id, user.role),
@@ -79,7 +83,9 @@ const loginUser = asyncHandler(async (req, res) => {
 
         res.json({
             _id: user._id,
-            displayName: user.displayName,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            userName: user.userName,
             email: user.email,
             role: user.role,
             avatarUrl: user.avatarUrl,
@@ -90,74 +96,6 @@ const loginUser = asyncHandler(async (req, res) => {
         throw new Error('Invalid email or password');
     }
 });
-
-// @desc    Authenticate with Google using an authorization code from the frontend
-// @route   POST /api/auth/google
-// @access  Public
-const googleAuth = asyncHandler(async (req, res) => {
-    const { code } = req.body;
-    if (!code) {
-        res.status(400);
-        throw new Error("Google authorization code is required");
-    }
-
-    try {
-        // Exchange the authorization code for tokens
-        const { tokens } = await googleClient.getToken({
-            code,
-            client_id: process.env.GOOGLE_CLIENT_ID,
-            client_secret: process.env.GOOGLE_CLIENT_SECRET,
-            redirect_uri: 'postmessage', // Required for this flow
-        });
-        const idToken = tokens.id_token;
-
-        const ticket = await googleClient.verifyIdToken({
-            idToken,
-            audience: process.env.GOOGLE_CLIENT_ID,
-        });
-
-        const { email, name, picture, sub: googleId } = ticket.getPayload();
-        
-        let user = await User.findOne({ googleId });
-
-        if (!user) {
-            // If no user with this googleId, check if one exists with the same email
-            const existingEmailUser = await User.findOne({ email });
-            if (existingEmailUser) {
-                 res.status(400);
-                 throw new Error(`Email ${email} is already registered. Please log in with your original method.`);
-            }
-
-            // Create a new user
-            user = await User.create({
-                googleId,
-                displayName: name,
-                email,
-                avatarUrl: picture,
-                authMethod: 'google',
-                isEmailVerified: true,
-            });
-        }
-        
-        user.lastLogin = new Date();
-        await user.save();
-
-        res.json({
-            _id: user._id,
-            displayName: user.displayName,
-            email: user.email,
-            role: user.role,
-            avatarUrl: user.avatarUrl,
-            token: generateToken(user._id, user.role),
-        });
-
-    } catch (error) {
-        console.error("Error during Google authentication:", error);
-        res.status(500);
-        throw new Error('An internal error occurred during Google authentication.');
-    }
-});
-
 
 // @desc    Handle Google OAuth callback
 // @route   GET /api/auth/google/callback
@@ -175,7 +113,9 @@ const getMe = asyncHandler(async (req, res) => {
     if (user) {
         res.json({
             _id: user._id,
-            displayName: user.displayName,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            userName: user.userName,
             email: user.email,
             avatarUrl: user.avatarUrl,
             role: user.role,
@@ -195,7 +135,6 @@ const logoutUser = asyncHandler(async (req, res) => {
 module.exports = {
     registerUser,
     loginUser,
-    googleAuth,
     googleCallback,
     getMe,
     logoutUser,
