@@ -16,7 +16,31 @@ connectDB();
 const app = express();
 
 // --- Middleware ---
-app.use(cors());
+
+// --- Detailed CORS Configuration ---
+const allowedOrigins = [
+    'http://localhost:5173',
+    'https://awastream.onrender.com', // Your local development URL
+    process.env.FRONTEND_URL  // Your deployed frontend URL from .env
+];
+
+const corsOptions = {
+    // The origin property can be a function that checks against a whitelist.
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1) {
+            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+            return callback(new Error(msg), false);
+        }
+        return callback(null, true);
+    },
+    credentials: true, // This is the crucial part that allows cookies to be sent
+};
+
+// Use the configured CORS options
+app.use(cors(corsOptions));
+
 
 // Body parser middleware to accept JSON data
 app.use(express.json());
@@ -54,3 +78,4 @@ const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
     console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });
+
