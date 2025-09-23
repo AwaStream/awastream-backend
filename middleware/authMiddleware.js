@@ -11,33 +11,32 @@ const authenticate = asyncHandler(async (req, res, next) => {
         try {
             token = authHeader.split(' ')[1];
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            req.user = await User.findById(decoded.userId).select('-passwordHash');
+            
+            req.user = await User.findById(decoded.id).select('-passwordHash');
 
             if (!req.user) {
                  res.status(401);
-                 throw new Error('Not authorized, user not found');
+                 throw new Error('Not authorized, user not found for this token');
             }
             next();
         } catch (error) {
             console.error(error);
             res.status(401);
-            throw new Error('Not authorized, token failed');
+            throw new Error('Not authorized, token failed or is invalid');
         }
     }
 
     if (!token) {
         res.status(401);
-        throw new Error('Not authorized, no token');
+        throw new Error('Not authorized, no token provided');
     }
 });
 
-// Middleware factory to check for specific roles.
-// Usage: authorize('superadmin') or authorize('creator', 'superadmin')
 const authorize = (...roles) => {
     return (req, res, next) => {
         if (!req.user || !roles.includes(req.user.role)) {
-            res.status(403); // 403 Forbidden - you are logged in, but you don't have permission
-            throw new Error(`Forbidden: User role '${req.user.role}' is not authorized to access this route.`);
+            res.status(403); // 403 Forbidden
+            throw new Error(`Forbidden: You do not have the required '${roles.join(' or ')}' role.`);
         }
         next();
     };
