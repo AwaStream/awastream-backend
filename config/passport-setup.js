@@ -7,9 +7,10 @@ passport.use(
         {
             clientID: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            callbackURL: '/api/auth/google/callback', // This must match your Google Cloud Console config
+            callbackURL: '/api/auth/google/callback',
+            passReqToCallback: true,
         },
-        async (accessToken, refreshToken, profile, done) => {
+        async (req, accessToken, refreshToken, profile, done) => {
             const { id, displayName, emails, photos } = profile;
             const email = emails[0].value;
             const avatarUrl = photos[0].value;
@@ -33,14 +34,19 @@ passport.use(
                     return done(new Error(`Email ${email} is already registered. Please log in with your original method.`), null);
                 }
 
+                const intent = req.session.intent; 
+
                 const newUser = await User.create({
                     googleId: id,
-                    displayName: displayName,
+                    firstName: firstName,
+                    lastName: lastName,
+                    userName: userName,
                     email: email,
                     avatarUrl: avatarUrl,
                     authMethod: 'google',
                     isEmailVerified: true, // Email from Google is considered verified
                     lastLogin: new Date(),
+                    role: intent === 'viewer' ? 'viewer' : 'creator',
                 });
 
                 return done(null, newUser);

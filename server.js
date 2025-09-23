@@ -1,6 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const session = require('express-session');
 const passport = require('passport');
 const cookieParser = require('cookie-parser') 
 const connectDB = require('./config/db');
@@ -45,6 +46,13 @@ app.use(cors(corsOptions));
 // Body parser middleware to accept JSON data
 app.use(express.json());
 app.use(cookieParser());
+
+app.use(session({
+    secret: process.env.SESSION_SECRET, // Add a SESSION_SECRET to your .env file
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: process.env.NODE_ENV === 'production' }
+}));
 
 // Passport middleware for authentication
 app.use(passport.initialize());

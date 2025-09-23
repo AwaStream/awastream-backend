@@ -9,10 +9,15 @@ const { authenticate } = require('../middleware/authMiddleware');
 router.post('/register', registerUser);
 router.post('/login', loginUser);
 
-router.get('/google', passport.authenticate('google', { 
-    scope: ['profile', 'email'],
-    session: false 
-}));
+router.get('/google', (req, res, next) => {
+    // Get the 'intent' from the query parameter (e.g., ?intent=viewer)
+    const { intent } = req.query;
+    // Save the intent to the session before starting the Passport flow
+    req.session.intent = intent;
+    passport.authenticate('google', { 
+        scope: ['profile', 'email'],
+    })(req, res, next);
+});
 
 router.get('/google/callback', passport.authenticate('google', { failureRedirect: '/login/failed', session: false }), googleCallback);
 
