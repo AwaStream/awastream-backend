@@ -50,6 +50,8 @@ app.use(cookieParser());
 app.use(passport.initialize());
 require('./config/passport-setup');
 
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // --- API Routes ---
 const authRoutes = require('./routes/authRoutes');
 const videoRoutes = require('./routes/videoRoutes');
