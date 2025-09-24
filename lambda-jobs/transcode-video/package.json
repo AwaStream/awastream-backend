@@ -1,0 +1,9 @@
+{
+  "name": "transcode-video-job",
+  "version": "1.0.0",
+  "description": "Lambda function to trigger AWS MediaConvert transcoding.",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-mediaconvert": "^3.556.0"
+  }
+}
