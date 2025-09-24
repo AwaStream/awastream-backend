@@ -39,17 +39,6 @@ const initializeVideoPayment = asyncHandler(async (req, res) => {
     res.status(200).json({ authorizationUrl: paymentData.authorization_url });
 });
 
-const asyncHandler = require('express-async-handler');
-const Video = require('../models/Video');
-const Transaction = require('../models/Transaction');
-const crypto = require('crypto');
-const { 
-    initializePayment, 
-    verifyPayment, 
-    handlePaystackWebhook: handlePaystackWebhookFromGateway, 
-    handleStripeWebhook: handleStripeWebhookFromGateway 
-} = require('../services/paymentGateway');
-
 /**
  * @desc    Verify a payment from the frontend after a redirect.
  * @route   POST /api/payments/verify
