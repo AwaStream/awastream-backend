@@ -1,16 +1,19 @@
 const express = require('express');
 const router = express.Router();
-// --- Add verifyViewerPayment to the import ---
-const { initializeVideoPayment, handlePaymentWebhook, verifyViewerPayment } = require('../controllers/paymentController');
+const { 
+    initializeVideoPayment, 
+    verifyViewerPayment,
+    handlePaystackWebhook,
+    handleStripeWebhook
+} = require('../controllers/paymentController');
 const { authenticate } = require('../middleware/authMiddleware');
 
-// Initialize a payment (user must be logged in)
 router.post('/initialize', authenticate, initializeVideoPayment);
-
-// Verify a payment after redirect (user must be logged in)
 router.post('/verify', authenticate, verifyViewerPayment);
 
-// Handle Paystack webhook (public, but signature is verified in controller)
-router.post('/webhook', handlePaymentWebhook);
+// --- WEBHOOKS ---
+// These are public but secured by signature verification within the adapters
+router.post('/webhook/paystack', handlePaystackWebhook);
+router.post('/webhook/stripe', express.raw({ type: 'application/json' }), handleStripeWebhook); // Stripe needs the raw body
 
 module.exports = router;

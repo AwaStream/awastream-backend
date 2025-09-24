@@ -15,6 +15,11 @@ const TransactionSchema = new mongoose.Schema({
     internalRef: { type: String, required: true, unique: true }, 
     providerRef: { type: String }, 
     paymentMethod: { type: String },
+      paymentProvider: {
+        type: String,
+        enum: ['paystack', 'stripe', 'flutterwave'],
+        required: true,
+    },
 }, { timestamps: true });
 
 const Transaction = mongoose.model('Transaction', TransactionSchema);
