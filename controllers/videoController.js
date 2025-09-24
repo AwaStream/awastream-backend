@@ -109,7 +109,7 @@ const checkVideoAccess = asyncHandler(async (req, res) => {
 module.exports = {
     createVideo,
     getVideoBySlug,
-    checkVideoAccess, // Export the new function
+    checkVideoAccess,
 };
 
 
