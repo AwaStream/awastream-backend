@@ -1,7 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const Video = require('../models/Video');
 const Transaction = require('../models/Transaction'); // Make sure the path is correct
-const { generateVideoAccessToken } = require('../utils/generateAccessTokens');
+const { generateVideoAccessToken } = require('../utils/generateVideoAccessToken');
 
 /**
  * @desc    Generate a short-lived access token for a video after verifying the user's rights.
