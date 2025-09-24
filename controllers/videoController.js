@@ -1,228 +1,82 @@
-const asyncHandler = require('express-async-handler');
-const Video = require('../models/Video');
-const crypto = require('crypto');
-const Transaction = require('../models/Transaction');
-const { fetchVideoDetails, getYouTubeVideoId } = require('../services/youtubeService');
-
-
-/**
- * @desc    Monetize a new video
- * @route   POST /api/v1/videos
- * @access  Private (Creator)
- */
-
-const createVideo = asyncHandler(async (req, res) => {
-    const { youtubeUrl, priceNaira } = req.body;
-    const creatorId = req.user.id;
-
-    if (!youtubeUrl || priceNaira === undefined) {
-        res.status(400);
-        throw new Error('Please provide a YouTube URL and a price.');
-    }
-    
-    const priceValue = parseFloat(priceNaira);
-
-    if (isNaN(priceValue) || priceValue < 150) {
-        res.status(400);
-        throw new Error('Price must be at least 150 Naira.');
-    }
-
-    const videoDetails = await fetchVideoDetails(youtubeUrl);
-    const youtubeVideoId = getYouTubeVideoId(youtubeUrl);
-
-    if (!videoDetails || !youtubeVideoId) {
-        res.status(400);
-        throw new Error('The provided YouTube URL is invalid or the video could not be found.');
-    }
-
-    const { title, thumbnailUrl, description } = videoDetails;
-
-    const baseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-    const randomBytes = crypto.randomBytes(4).toString('hex');
-    const shareableSlug = `${baseSlug}-${randomBytes}`;
-
-    const priceKobo = Math.round(priceValue * 100);
-
-    const videoObjectToSave = {
-        creator: creatorId,
-        youtubeUrl: youtubeUrl,
-        youtubeVideoId,
-        title,
-        thumbnailUrl,
-        description,
-        priceNaira: priceValue,
-        priceKobo,
-        shareableSlug,
-    };
-    
-    const newVideo = await Video.create(videoObjectToSave);
-
-    if (newVideo) {
-        res.status(201).json(newVideo);
-    } else {
-        res.status(500); 
-        throw new Error('Failed to create the video in the database after validation.');
-    }
-});
-
-
-// @desc    Get a single video by its slug for public viewing
-// @route   GET /api/videos/:slug
-// @access  Public
-const getVideoBySlug = asyncHandler(async (req, res) => {
-    const video = await Video.findOne({ shareableSlug: req.params.slug })
-        .select('-creator.passwordHash')
-        .populate('creator', 'userName avatarUrl'); // Populate creator info
-
-    if (video) {
-        res.json(video);
-    } else {
-        res.status(404);
-        throw new Error('Video not found');
-    }
-});
-
-const checkVideoAccess = asyncHandler(async (req, res) => {
-    const video = await Video.findOne({ shareableSlug: req.params.slug });
-    if (!video) {
-        res.status(404);
-        throw new Error('Video not found');
-    }
-
-      if (video.creator.toString() === req.user.id.toString()) {
-        return res.json({ hasAccess: true, youtubeUrl: video.youtubeUrl });
-    }
-
-    const transaction = await Transaction.findOne({
-        viewer: req.user._id,
-        video: video._id,
-        status: 'successful'
-    });
-
-       if (transaction) {
-        res.json({ hasAccess: true, youtubeUrl: video.youtubeUrl });
-    } else {
-        res.json({ hasAccess: false });
-    }
-});
-
-module.exports = {
-    createVideo,
-    getVideoBySlug,
-    checkVideoAccess,
-};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // const asyncHandler = require('express-async-handler');
-// const crypto = require('crypto');
-// const fs = require('fs');
-// const path = require('path');
-// const ytdl = require('ytdl-core');
-// const ffmpeg = require('fluent-ffmpeg');
-
 // const Video = require('../models/Video');
+// const crypto = require('crypto');
 // const Transaction = require('../models/Transaction');
+// const { fetchVideoDetails, getYouTubeVideoId } = require('../services/youtubeService');
+
+
+// /**
+//  * @desc    Monetize a new video
+//  * @route   POST /api/v1/videos
+//  * @access  Private (Creator)
+//  */
 
 // const createVideo = asyncHandler(async (req, res) => {
 //     const { youtubeUrl, priceNaira } = req.body;
 //     const creatorId = req.user.id;
+
+//     if (!youtubeUrl || priceNaira === undefined) {
+//         res.status(400);
+//         throw new Error('Please provide a YouTube URL and a price.');
+//     }
     
-//     if (!youtubeUrl || parseFloat(priceNaira) < 150) {
+//     const priceValue = parseFloat(priceNaira);
+
+//     if (isNaN(priceValue) || priceValue < 150) {
 //         res.status(400);
-//         throw new Error('A valid YouTube URL and a price of at least 150 Naira are required.');
+//         throw new Error('Price must be at least 150 Naira.');
 //     }
-//     if (!ytdl.validateURL(youtubeUrl)) {
+
+//     const videoDetails = await fetchVideoDetails(youtubeUrl);
+//     const youtubeVideoId = getYouTubeVideoId(youtubeUrl);
+
+//     if (!videoDetails || !youtubeVideoId) {
 //         res.status(400);
-//         throw new Error('The provided URL is not a valid YouTube URL.');
+//         throw new Error('The provided YouTube URL is invalid or the video could not be found.');
 //     }
 
-//     const videoId = ytdl.getURLVideoID(youtubeUrl);
-//     const videoInfo = await ytdl.getInfo(youtubeUrl);
-//     const { title, description, thumbnails } = videoInfo.videoDetails;
-//     const thumbnailUrl = thumbnails[thumbnails.length - 1].url;
+//     const { title, thumbnailUrl, description } = videoDetails;
 
-//     const outputDir = path.join(__dirname, '..', 'uploads', videoId);
-//     const tempVideoPath = path.join(outputDir, 'temp_video.mp4');
-//     const hlsManifestPath = path.join(outputDir, 'master.m3u8');
-//     const keyPath = path.join(outputDir, 'aes.key');
-//     const keyInfoPath = path.join(outputDir, 'key_info.txt');
+//     const baseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+//     const randomBytes = crypto.randomBytes(4).toString('hex');
+//     const shareableSlug = `${baseSlug}-${randomBytes}`;
 
-//     if (!fs.existsSync(outputDir)) {
-//         fs.mkdirSync(outputDir, { recursive: true });
-//     }
+//     const priceKobo = Math.round(priceValue * 100);
 
-//     try {
-//         await new Promise((resolve, reject) => {
-//             ytdl(youtubeUrl, { quality: 'highest' })
-//                 .pipe(fs.createWriteStream(tempVideoPath))
-//                 .on('finish', resolve)
-//                 .on('error', reject);
-//         });
+//     const videoObjectToSave = {
+//         creator: creatorId,
+//         youtubeUrl: youtubeUrl,
+//         youtubeVideoId,
+//         title,
+//         thumbnailUrl,
+//         description,
+//         priceNaira: priceValue,
+//         priceKobo,
+//         shareableSlug,
+//     };
+    
+//     const newVideo = await Video.create(videoObjectToSave);
 
-//         const encryptionKey = crypto.randomBytes(16);
-//         fs.writeFileSync(keyPath, encryptionKey);
-        
-//         const keyUrl = `/api/v1/videos/key/${videoId}`;
-//         const keyInfoContent = `${keyUrl}\n${keyPath}`;
-//         fs.writeFileSync(keyInfoPath, keyInfoContent);
-
-//         await new Promise((resolve, reject) => {
-//             ffmpeg(tempVideoPath)
-//                 .outputOptions(['-hls_time 10', '-hls_list_size 0', '-hls_key_info_file', keyInfoPath])
-//                 .output(hlsManifestPath)
-//                 .on('end', resolve)
-//                 .on('error', reject)
-//                 .run();
-//         });
-
-//         const priceValue = parseFloat(priceNaira);
-//         const priceKobo = Math.round(priceValue * 100);
-//         const shareableSlug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${crypto.randomBytes(4).toString('hex')}`;
-        
-//         const newVideo = await Video.create({
-//             creator: creatorId,
-//             youtubeUrl,
-//             youtubeVideoId: videoId,
-//             title,
-//             description,
-//             thumbnailUrl,
-//             priceNaira: priceValue,
-//             priceKobo,
-//             shareableSlug,
-//             hlsManifestPath: `/uploads/${videoId}/master.m3u8`,
-//             hlsEncryptionKey: encryptionKey,
-//         });
-        
+//     if (newVideo) {
 //         res.status(201).json(newVideo);
-//     } finally {
-//         if (fs.existsSync(tempVideoPath)) fs.unlinkSync(tempVideoPath);
-//         if (fs.existsSync(keyInfoPath)) fs.unlinkSync(keyInfoPath);
+//     } else {
+//         res.status(500); 
+//         throw new Error('Failed to create the video in the database after validation.');
 //     }
 // });
 
+
+// // @desc    Get a single video by its slug for public viewing
+// // @route   GET /api/videos/:slug
+// // @access  Public
 // const getVideoBySlug = asyncHandler(async (req, res) => {
 //     const video = await Video.findOne({ shareableSlug: req.params.slug })
-//         .select('title description thumbnailUrl priceKobo shareableSlug')
-//         .populate('creator', 'userName avatarUrl');
-    
-//     if (video) res.json(video);
-//     else {
+//         .select('-creator.passwordHash')
+//         .populate('creator', 'userName avatarUrl'); // Populate creator info
+
+//     if (video) {
+//         res.json(video);
+//     } else {
 //         res.status(404);
 //         throw new Error('Video not found');
 //     }
@@ -235,38 +89,226 @@ module.exports = {
 //         throw new Error('Video not found');
 //     }
 
-//     if (video.creator.toString() === req.user.id.toString()) {
-//         return res.json({ hasAccess: true, manifestUrl: video.hlsManifestPath });
+//       if (video.creator.toString() === req.user.id.toString()) {
+//         return res.json({ hasAccess: true, youtubeUrl: video.youtubeUrl });
 //     }
 
-//     const transaction = await Transaction.findOne({ viewer: req.user.id, video: video._id, status: 'successful' });
+//     const transaction = await Transaction.findOne({
+//         viewer: req.user._id,
+//         video: video._id,
+//         status: 'successful'
+//     });
 
-//     if (transaction) {
-//         res.json({ hasAccess: true, manifestUrl: video.hlsManifestPath });
+//        if (transaction) {
+//         res.json({ hasAccess: true, youtubeUrl: video.youtubeUrl });
 //     } else {
 //         res.json({ hasAccess: false });
 //     }
 // });
 
-// const getHlsKey = asyncHandler(async (req, res) => {
-//     const video = await Video.findOne({ youtubeVideoId: req.params.videoId }).select('+hlsEncryptionKey');
-//     if (!video) {
-//         return res.status(404).send("Key not found.");
-//     }
-    
-//     const transaction = await Transaction.findOne({ viewer: req.user.id, video: video._id, status: 'successful' });
-//     const isCreator = video.creator.toString() === req.user.id.toString();
+// module.exports = {
+//     createVideo,
+//     getVideoBySlug,
+//     checkVideoAccess,
+// };
 
-//     if (!transaction && !isCreator) {
-//         return res.status(403).send("Access denied.");
-//     }
-    
-//     const keyPath = path.join(__dirname, '..', 'uploads', req.params.videoId, 'aes.key');
-//     if (fs.existsSync(keyPath)) {
-//         res.sendFile(keyPath);
-//     } else {
-//         res.status(404).send("Key file missing.");
-//     }
-// });
 
-// module.exports = { createVideo, getVideoBySlug, checkVideoAccess, getHlsKey };
+
+
+
+
+
+
+
+
+
+
+
+
+const asyncHandler = require('express-async-handler');
+const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+const Video = require('../models/Video');
+const { fetchVideoDetails, getYouTubeVideoId } = require('../services/youtubeService');
+const { generatePresignedUploadUrl, getVideoStream } = require('../services/s3Service');
+
+/**
+ * @desc    Monetize a new video from either YouTube or a direct upload.
+ * @route   POST /api/videos
+ * @access  Private (Creator)
+ */
+const createVideo = asyncHandler(async (req, res) => {
+    const {
+        priceNaira,
+        sourceType,
+        // For 'youtube' sourceType
+        youtubeUrl,
+        // For 'direct' sourceType
+        title: directTitle,
+        description: directDescription,
+        thumbnailUrl: directThumbnailUrl,
+        s3Key // The key returned after a successful S3 upload
+    } = req.body;
+
+    const creatorId = req.user.id;
+    const priceValue = parseFloat(priceNaira);
+    let videoDataForDb = {};
+
+    // --- Step 1: Validate input and gather data based on sourceType ---
+    if (sourceType === 'youtube') {
+        // Conditional price validation for YouTube
+        if (isNaN(priceValue) || priceValue < 150) {
+            res.status(400);
+            throw new Error('Price for a YouTube video must be at least 150 Naira.');
+        }
+        if (!youtubeUrl) {
+            res.status(400);
+            throw new Error('youtubeUrl is required for this source type.');
+        }
+
+        // Fetch details from the YouTube service
+        const ytDetails = await fetchVideoDetails(youtubeUrl);
+        const ytVideoId = getYouTubeVideoId(youtubeUrl);
+        if (!ytDetails || !ytVideoId) {
+            res.status(400);
+            throw new Error('The provided YouTube URL is invalid or the video could not be found.');
+        }
+
+        videoDataForDb = {
+            sourceType: 'youtube',
+            sourceId: ytVideoId,
+            title: ytDetails.title,
+            description: ytDetails.description,
+            thumbnailUrl: ytDetails.thumbnailUrl,
+        };
+
+    } else if (sourceType === 'direct') {
+        // Conditional price validation for Direct Monetization
+        if (isNaN(priceValue) || priceValue < 500) {
+            res.status(400);
+            throw new Error('Price for a Directly Monetized video must be at least 500 Naira.');
+        }
+        if (!directTitle || !s3Key || !directThumbnailUrl) {
+            res.status(400);
+            throw new Error('title, s3Key, and thumbnailUrl are required for this source type.');
+        }
+
+        videoDataForDb = {
+            sourceType: 'direct',
+            sourceId: s3Key, // The unique key for the file in S3 is the sourceId
+            title: directTitle,
+            description: directDescription,
+            thumbnailUrl: directThumbnailUrl,
+        };
+
+    } else {
+        res.status(400);
+        throw new Error('Invalid sourceType provided. Must be "youtube" or "direct".');
+    }
+
+    // --- Step 2: Common Logic - Generate slug and save the video to our database ---
+    const baseSlug = videoDataForDb.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const randomBytes = crypto.randomBytes(4).toString('hex');
+    const shareableSlug = `${baseSlug}-${randomBytes}`;
+    const priceKobo = Math.round(priceValue * 100);
+
+    const newVideo = await Video.create({
+        creator: creatorId,
+        sourceType: videoDataForDb.sourceType,
+        sourceId: videoDataForDb.sourceId,
+        title: videoDataForDb.title,
+        description: videoDataForDb.description,
+        thumbnailUrl: videoDataForDb.thumbnailUrl,
+        priceNaira: priceValue,
+        priceKobo,
+        shareableSlug,
+    });
+
+    if (newVideo) {
+        res.status(201).json(newVideo);
+    } else {
+        res.status(500);
+        throw new Error('Failed to create the video in the database after validation.');
+    }
+});
+
+
+/**
+ * @desc    Generate a presigned URL for direct S3 upload by calling the S3 service.
+ * @route   POST /api/videos/generate-upload-url
+ * @access  Private (Creator)
+ */
+const generateUploadUrl = asyncHandler(async (req, res) => {
+    const { filename, filetype } = req.body;
+    if (!filename || !filetype) {
+        res.status(400);
+        throw new Error('Filename and filetype are required.');
+    }
+    const uploadData = await generatePresignedUploadUrl(req.user.id, filename, filetype);
+    res.status(200).json(uploadData);
+});
+
+/**
+ * @desc    Stream a directly monetized video from S3, secured by a short-lived token.
+ * @route   GET /api/videos/stream/:slug
+ * @access  Private (via token)
+ */
+const streamVideo = asyncHandler(async (req, res) => {
+    const { token } = req.query;
+    if (!token) {
+        res.status(401);
+        throw new Error('Not authorized, no token.');
+    }
+
+    try {
+        // Verify the short-lived token is valid and not expired
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // Find the video and ensure the token matches the video being requested
+        const video = await Video.findOne({ shareableSlug: req.params.slug });
+        if (!video || video._id.toString() !== decoded.videoId) {
+            res.status(401);
+            throw new Error('Not authorized for this video.');
+        }
+        
+        // Get the video stream from our S3 service
+        const { stream, contentType, contentLength } = await getVideoStream(video.sourceId);
+
+        // Set the response headers to tell the browser it's a video stream
+        res.writeHead(200, {
+            'Content-Type': contentType,
+            'Content-Length': contentLength,
+        });
+
+        // Pipe the stream from S3 directly to the user's browser
+        stream.pipe(res);
+    } catch (error) {
+        res.status(401);
+        throw new Error('Not authorized, token is invalid or has expired.');
+    }
+});
+
+
+// @desc    Get a single video by its slug for public viewing (for sales page)
+// @route   GET /api/videos/:slug
+// @access  Public
+const getVideoBySlug = asyncHandler(async (req, res) => {
+    const video = await Video.findOne({ shareableSlug: req.params.slug })
+        .populate('creator', 'userName avatarUrl'); 
+
+    if (video) {
+        res.json(video);
+    } else {
+        res.status(404);
+        throw new Error('Video not found');
+    }
+});
+
+
+module.exports = {
+    createVideo,
+    getVideoBySlug,
+    generateUploadUrl,
+    streamVideo,
+    // The old 'checkVideoAccess' is now obsolete and has been replaced by the AccessControlEngine
+};
