@@ -14,6 +14,7 @@ const UserSchema = new mongoose.Schema({
      payoutBankName: { type: String, trim: true },
     payoutAccountNumber: { type: String, trim: true },
     payoutAccountName: { type: String, trim: true },
+    paystackRecipientCode: { type: String, trim: true }, 
     isEmailVerified: { type: Boolean, default: false },
     lastLogin: { type: Date },
     status: { type: String, enum: ['active', 'inactive', 'suspended'], default: 'active' },

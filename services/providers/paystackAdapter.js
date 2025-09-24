@@ -68,6 +68,10 @@ const handleWebhook = async (req) => {
     // 2. We only care about successful charges
     if (event === 'charge.success') {
         const internalRef = data.reference;
+        console.log('--- PROCESSING WEBHOOK ---');
+        console.log('Webhook data from Paystack:', data); // Log the whole object
+
+
         const transaction = await Transaction.findOne({ internalRef });
 
         // 3. Find the transaction and ensure it hasn't already been processed
@@ -75,6 +79,7 @@ const handleWebhook = async (req) => {
             
             // 4. Update the transaction with the final details
             const grossAmountKobo = data.amount;
+            console.log('Gross amount from webhook:', grossAmountKobo, 'Type:', typeof grossAmountKobo); // Check amount and type
             const commissionRate = 0.15; // 15%
             const commissionKobo = Math.round(grossAmountKobo * commissionRate);
             const creatorEarningsKobo = grossAmountKobo - commissionKobo;
