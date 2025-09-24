@@ -193,16 +193,24 @@ const initializeVideoPayment = asyncHandler(async (req, res) => {
 });
 
 const verifyViewerPayment = asyncHandler(async (req, res) => {
-    // This controller might become provider-specific, as Paystack uses 'reference'
-    // and Stripe uses 'stripe_session_id'. For now, let's assume it's for Paystack.
-    const { reference } = req.body;
-    const verification = await verifyPayment(reference);
+    const { provider, reference, sessionId } = req.body;
+    let verification;
+
+    // The gateway determines which provider to use
+    if (provider === 'paystack' && reference) {
+        verification = await verifyPayment(reference); 
+    } else if (provider === 'stripe' && sessionId) {
+        verification = await verifyPayment(sessionId);
+    } else {
+        res.status(400);
+        throw new Error('Invalid payment verification request.');
+    }
     
+    // Check the standardized status from our gateway
     if (verification.status === 'success') {
-        // You might update the transaction here as a fallback, but webhook is primary
         res.status(200).json({ status: 'successful' });
     } else {
-        res.status(400).json({ status: 'failed', message: 'Payment not confirmed.' });
+        res.status(400).json({ status: 'failed', message: 'Payment not confirmed by provider.' });
     }
 });
 
