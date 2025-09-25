@@ -44,7 +44,7 @@ const getCreatorDashboard = asyncHandler(async (req, res) => {
 // @route   GET /api/v1/creator/profile
 // @access  Private (Creator)
 const getCreatorProfile = asyncHandler(async (req, res) => {
-    const creator = await User.findById(req.user.id).select('userName email avatarUrl payoutBankName payoutAccountNumber payoutAccountName');
+    const creator = await User.findById(req.user.id).select('userName email firstName lastName avatarUrl payoutBankName payoutAccountNumber payoutAccountName');
     
     if (creator) {
         res.json(creator);
