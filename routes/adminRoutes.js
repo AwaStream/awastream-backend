@@ -10,7 +10,8 @@ router.use(authenticate, authorize('superadmin'));
 router.get('/dashboard', getAdminDashboard);
 
 router.get('/creators/:id/details', getCreatorDetails);
-router.get('/viewers/:id/details', getAllViewers)
+
+router.get('/viewers', getAllViewers); 
 
 router.get('/payouts', getPayouts);
 router.put('/payouts/:id/approve', approvePayout);
