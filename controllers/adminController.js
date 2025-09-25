@@ -233,6 +233,7 @@ const Payout = require('../models/Payout');
 const getAdminDashboard = asyncHandler(async (req, res) => {
     const totalCreators = await User.countDocuments({ role: 'creator' });
     const totalVideos = await Video.countDocuments();
+    const totalViewers = await User.countDocuments({ role: 'viewer' });
     
     // Calculate Gross Merchandise Volume (total money moved through the platform)
     const grossRevenueAggregation = await Transaction.aggregate([
@@ -267,6 +268,32 @@ const getAdminDashboard = asyncHandler(async (req, res) => {
         totalPayoutsKobo,
         pendingPayouts,
     });
+});
+
+// Create a new function for fetching viewers
+const getAllViewers = asyncHandler(async (req, res) => {
+    const viewers = await User.aggregate([
+        { $match: { role: 'viewer' } },
+        { $sort: { createdAt: -1 } },
+        {
+            $lookup: {
+                from: 'transactions',
+                localField: '_id',
+                foreignField: 'viewer',
+                as: 'purchaseHistory'
+            }
+        },
+        {
+            $project: {
+                userName: 1,
+                email: 1,
+                status: 1,
+                createdAt: 1,
+                lastPurchase: { $first: '$purchaseHistory' } // Get the most recent transaction
+            }
+        }
+    ]);
+    res.status(200).json(viewers);
 });
 
 // @desc    Get detailed analytics for a single creator
@@ -453,4 +480,5 @@ module.exports = {
     getAllUsers,
     updateUserStatus,
     getCreatorDetails,
+    getAllViewers,
 };
