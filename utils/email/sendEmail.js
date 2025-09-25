@@ -24,6 +24,7 @@ const sendEmail = async (options) => {
 const transporter = nodemailer.createTransport({
     host: process.env.AWASTREAM_EMAIL_HOST,
     port: process.env.AWASTREAM_EMAIL_PORT,
+    secure: true,
     auth: {
         user: process.env.AWASTREAM_EMAIL_USER,
         pass: process.env.AWASTREAM_EMAIL_PASS,
@@ -50,7 +51,7 @@ const transporter = nodemailer.createTransport({
         to: send_to,
         replyTo: reply_to,
         subject: subject,
-        template: template, // e.g., "welcome"
+        template: template,
         context: {
             name,
             code,
