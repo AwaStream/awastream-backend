@@ -80,5 +80,3 @@ const transporter = nodemailer.createTransport({
 module.exports = sendEmail;
 
 
-
-//"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"
