@@ -5,6 +5,7 @@ const {
     getVideoBySlug,
     generateUploadUrl,
     streamVideo,
+    deleteVideo,
 } = require('../controllers/videoController');
 
 const { authenticate } = require('../middleware/authMiddleware');
@@ -22,8 +23,6 @@ router.route('/generate-upload-url').post(authenticate, generateUploadUrl);
 // @desc    Stream a directly monetized video from S3
 // @route   GET /api/v1/videos/stream/:slug
 // @access  Private (via short-lived token)
-// NOTE: This route is NOT protected by the standard `authenticate` middleware.
-// Its security is handled by the JWT token in the query string.
 router.route('/stream/:slug').get(streamVideo);
 
 // @desc    Get the public details of a video for a sales page
@@ -31,6 +30,7 @@ router.route('/stream/:slug').get(streamVideo);
 // @access  Public
 router.route('/:slug').get(getVideoBySlug);
 
-// The old '/:slug/access' route is no longer needed and has been removed.
+router.route('/:id').delete(authenticate, deleteVideo);
+
 
 module.exports = router;
