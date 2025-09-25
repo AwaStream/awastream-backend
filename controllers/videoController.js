@@ -14,22 +14,19 @@ const createVideo = asyncHandler(async (req, res) => {
     const {
         priceNaira,
         sourceType,
-        // For 'youtube' sourceType
         youtubeUrl,
-        // For 'direct' sourceType
         title: directTitle,
         description: directDescription,
         thumbnailUrl: directThumbnailUrl,
-        s3Key // The key returned after a successful S3 upload
+        s3Key
     } = req.body;
 
     const creatorId = req.user.id;
     const priceValue = parseFloat(priceNaira);
     let videoDataForDb = {};
 
-    // --- Step 1: Validate input and gather data based on sourceType ---
+    // --- Validate input and gather data based on sourceType ---
     if (sourceType === 'youtube') {
-        // Conditional price validation for YouTube
         if (isNaN(priceValue) || priceValue < 150) {
             res.status(400);
             throw new Error('Price for a YouTube video must be at least 150 Naira.');
@@ -68,7 +65,7 @@ const createVideo = asyncHandler(async (req, res) => {
 
         videoDataForDb = {
             sourceType: 'direct',
-            sourceId: s3Key, // The unique key for the file in S3 is the sourceId
+            sourceId: s3Key, 
             title: directTitle,
             description: directDescription,
             thumbnailUrl: directThumbnailUrl,
@@ -79,7 +76,7 @@ const createVideo = asyncHandler(async (req, res) => {
         throw new Error('Invalid sourceType provided. Must be "youtube" or "direct".');
     }
 
-    // --- Step 2: Common Logic - Generate slug and save the video to our database ---
+    //Generate slug and save the video to our database
     const baseSlug = videoDataForDb.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     const randomBytes = crypto.randomBytes(4).toString('hex');
     const shareableSlug = `${baseSlug}-${randomBytes}`;
@@ -177,11 +174,31 @@ const getVideoBySlug = asyncHandler(async (req, res) => {
     }
 });
 
+// @desc    Delete a monetized video
+// @route   DELETE /api/v1/videos/:id
+// @access  Private (Creator)
+const deleteVideo = asyncHandler(async (req, res) => {
+    const video = await Video.findById(req.params.id);
+
+    if (!video) {
+        res.status(404);
+        throw new Error('Video not found');
+    }
+
+    if (video.creator.toString() !== req.user.id) {
+        res.status(401);
+        throw new Error('User not authorized to delete this video');
+    }
+
+    await video.deleteOne();
+
+    res.status(200).json({ message: 'Video removed successfully' });
+});
 
 module.exports = {
     createVideo,
     getVideoBySlug,
     generateUploadUrl,
     streamVideo,
-    // The old 'checkVideoAccess' is now obsolete and has been replaced by the AccessControlEngine
+    deleteVideo,
 };
