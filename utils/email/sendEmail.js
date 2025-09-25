@@ -16,29 +16,27 @@ const sendEmail = async (options) => {
         date,
     } = options;
 
-    // Validate template parameter
     if (!template) {
         console.error("Email template name is required!");
         return false;
     }
 
-    const transporter = nodemailer.createTransport({
-        host: process.env.PRAXFORM_EMAIL_HOST,
-        port: process.env.PRAXFORM_EMAIL_PORT,
-        auth: {
-            user: process.env.PRAXFORM_EMAIL_USER,
-            pass: process.env.PRAXFORM_EMAIL_PASS,
-        },
-        tls: {
-            rejectUnauthorized: false,
-        },
-    });
+const transporter = nodemailer.createTransport({
+    host: process.env.AWASTREAM_EMAIL_HOST,
+    port: process.env.AWASTREAM_EMAIL_PORT,
+    secure: true,
+    auth: {
+        user: process.env.AWASTREAM_EMAIL_USER,
+        pass: process.env.AWASTREAM_EMAIL_PASS,
+    },
+});
 
     const handlebarOptions = {
         viewEngine: {
             extname: '.handlebars',
-            partialsDir: path.resolve('./emails'),
-            defaultLayout: false,
+            layoutsDir: path.resolve('./emails/layouts/'), 
+            partialsDir: path.resolve('./emails/'),
+            defaultLayout: 'baseLayout',
         },
         viewPath: path.resolve('./emails'),
         extName: '.handlebars',
@@ -59,6 +57,7 @@ const sendEmail = async (options) => {
             code,
             link,
             date,
+            currentYear: new Date().getFullYear()
         },
     };
 

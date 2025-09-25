@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>AwaStream</title>
+  <style type="text/css" rel="stylesheet" media="all">
+    /* Base */
+    body {
+      width: 100% !important;
+      height: 100%;
+      margin: 0;
+      -webkit-text-size-adjust: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background-color: #f4f4f7;
+      color: #3d4852;
+    }
+    
+    .email-wrapper {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f7;
+    }
+    
+    .email-content {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Header */
+    .email-masthead {
+      padding: 25px 0;
+      text-align: center;
+    }
+
+    .email-masthead_name {
+      font-size: 16px;
+      font-weight: bold;
+      color: #2f3133;
+      text-decoration: none;
+    }
+
+    /* Body */
+    .email-body {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      border-top: 1px solid #edeff2;
+      border-bottom: 1px solid #edeff2;
+      background-color: #ffffff;
+    }
+
+    .email-body_inner {
+      width: 570px;
+      margin: 0 auto;
+      padding: 0;
+    }
+
+    .content-cell {
+      padding: 35px;
+    }
+    
+    h1 {
+      margin-top: 0;
+      color: #2f3133;
+      font-size: 22px;
+      font-weight: bold;
+    }
+    
+    p {
+      margin-top: 0;
+      color: #3d4852;
+      font-size: 16px;
+      line-height: 1.5em;
+    }
+
+    /* Button */
+    .button {
+      display: inline-block;
+      color: #ffffff !important;
+      text-decoration: none;
+      background-color: #22c55e; /* AwaStream Green */
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 500;
+      text-align: center;
+      box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .button:hover {
+        background-color: #16a34a; /* Darker AwaStream Green */
+    }
+
+    /* Footer */
+    .email-footer {
+      width: 570px;
+      margin: 0 auto;
+      padding: 0;
+      text-align: center;
+    }
+
+    .email-footer p {
+      color: #aeaeae;
+      font-size: 12px;
+    }
+
+    @media only screen and (max-width: 600px) {
+      .email-body_inner,
+      .email-footer {
+        width: 100% !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <table class="email-wrapper" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+    <tr>
+      <td align="center">
+        <table class="email-content" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+          <tr>
+            <td class="email-masthead">
+              <a href="https://awastream.com" class="email-masthead_name">
+                AwaStream
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td class="email-body" width="100%">
+              <table class="email-body_inner" align="center" width="570" cellpadding="0" cellspacing="0" role="presentation">
+                <tr>
+                  <td class="content-cell">
+                    {{{body}}}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <table class="email-footer" align="center" width="570" cellpadding="0" cellspacing="0" role="presentation">
+                <tr>
+                  <td class="content-cell" align="center">
+                    <p>&copy; {{currentYear}} AwaStream. All rights reserved.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
