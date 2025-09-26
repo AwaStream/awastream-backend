@@ -75,6 +75,10 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const accessRoutes = require('./routes/accessRoutes'); // <-- 3. IMPORT ACCESS ROUTES
 const utilsRoutes = require('./routes/utilsRoute');
+const viewerRoutes = require('./routes/viewerRoutes');
+
+
+
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/videos', videoRoutes);
@@ -83,6 +87,7 @@ app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/access', accessRoutes);
 app.use('/api/v1/utils', utilsRoutes);
+app.use('/api/v1/viewer', viewerRoutes);
 
 // --- Health Check Route ---
 app.get('/', (req, res) => {
