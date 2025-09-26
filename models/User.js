@@ -7,7 +7,7 @@ const UserSchema = new mongoose.Schema({
     passwordHash: { type: String, required: false, select: false },
     authMethod: { type: String, enum: ['local', 'google'], default: 'local' },
     firstName: { type: String, required: true },
-    lastName: { type: String, required: true },
+    lastName: { type: String, required: false, default: '' },
     userName: { type: String, required: true, trim: true },
     avatarUrl: { type: String },
     googleId: { type: String, unique: true, sparse: true },
