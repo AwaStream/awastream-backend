@@ -4,7 +4,7 @@ const cors = require('cors');
 const session = require('express-session');
 const passport = require('passport');
 const cookieParser = require('cookie-parser');
-const MongoStore = require('connect-mongo'); // <-- 1. IMPORT MONGOSTORE
+const MongoStore = require('connect-mongo'); 
 const connectDB = require('./config/db');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
