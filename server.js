@@ -17,6 +17,8 @@ connectDB();
 // Initialize Express app
 const app = express();
 
+app.set('trust proxy', 1);
+
 // --- Middleware ---
 
 const allowedOrigins = [
