@@ -129,9 +129,11 @@ const loginUser = asyncHandler(async (req, res) => {
     await user.save();
     sendTokenResponse(user, 200, res);
 });
+
 const googleCallback = asyncHandler(async (req, res) => {
     const user = req.user;
     const { accessToken, refreshToken } = generateTokens(user._id, user.role);
+ 
     const cookieOptions = {
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         httpOnly: true,
@@ -139,8 +141,12 @@ const googleCallback = asyncHandler(async (req, res) => {
         sameSite: 'none',
         path: '/',
     };
+ 
     res.cookie('refreshToken', refreshToken, cookieOptions);
-    res.redirect(`${process.env.AWASTREAM_FRONTEND_HOST}/auth/callback?token=${accessToken}`);
+    
+    const frontendUrl = process.env.AWASTREAM_FRONTEND_URL || `https://${process.env.AWASTREAM_FRONTEND_URL}`;
+ 
+    res.redirect(`${frontendUrl}/auth/callback?token=${accessToken}`);
 });
 const verifyEmail = asyncHandler(async (req, res) => {
     const { token } = req.body;
@@ -163,6 +169,9 @@ const verifyEmail = asyncHandler(async (req, res) => {
     await user.save();
     sendTokenResponse(user, 200, res);
 });
+
+
+
 
 
 const resendVerificationEmail = asyncHandler(async (req, res) => {
