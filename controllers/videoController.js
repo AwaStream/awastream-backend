@@ -1,5 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const crypto = require('crypto');
+const mongoose = require('mongoose')
 const jwt = require('jsonwebtoken');
 const Video = require('../models/Video');
 const { fetchVideoDetails, getYouTubeVideoId } = require('../services/youtubeService');
@@ -180,7 +181,9 @@ const getVideoBySlug = asyncHandler(async (req, res) => {
  * @access  Private (Creator)
  */
 const getAllCreatorVideos = asyncHandler(async (req, res) => {
-    const videos = await Video.find({ creator: req.user.id }).sort({ createdAt: -1 });
+    const creatorId = new mongoose.Types.ObjectId(req.user.id);
+
+    const videos = await Video.find({ creator: creatorId }).sort({ createdAt: -1 });
 
     if (videos) {
         res.status(200).json(videos);
