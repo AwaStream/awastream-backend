@@ -109,7 +109,6 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 });
 
-// ... loginUser, googleCallback, and verifyEmail are unchanged ...
 const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email }).select('+passwordHash');

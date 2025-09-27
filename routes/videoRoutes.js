@@ -6,6 +6,7 @@ const {
     generateUploadUrl,
     streamVideo,
     deleteVideo,
+    getAllCreatorVideos,
 } = require('../controllers/videoController');
 
 const { authenticate } = require('../middleware/authMiddleware');
@@ -29,6 +30,8 @@ router.route('/stream/:slug').get(streamVideo);
 // @route   GET /api/v1/videos/:slug
 // @access  Public
 router.route('/:slug').get(getVideoBySlug);
+
+router.route('/').get(getAllCreatorVideos);
 
 router.route('/:id').delete(authenticate, deleteVideo);
 

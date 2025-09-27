@@ -174,6 +174,22 @@ const getVideoBySlug = asyncHandler(async (req, res) => {
     }
 });
 
+/**
+ * @desc    Get all videos for the logged-in creator
+ * @route   GET /api/videos
+ * @access  Private (Creator)
+ */
+const getAllCreatorVideos = asyncHandler(async (req, res) => {
+    const videos = await Video.find({ creator: req.user.id }).sort({ createdAt: -1 });
+
+    if (videos) {
+        res.status(200).json(videos);
+    } else {
+        res.status(404);
+        throw new Error('No videos found for this creator.');
+    }
+});
+
 // @desc    Delete a monetized video
 // @route   DELETE /api/v1/videos/:id
 // @access  Private (Creator)
@@ -199,6 +215,7 @@ module.exports = {
     createVideo,
     getVideoBySlug,
     generateUploadUrl,
+    getAllCreatorVideos,
     streamVideo,
     deleteVideo,
 };
