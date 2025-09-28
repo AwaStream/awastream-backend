@@ -6,6 +6,7 @@ const Video = require('../models/Video');
 const Transaction = require('../models/Transaction');
 const Comment = require('../models/Comment');
 const VideoView = require('../models/VideoView');
+const { startOfDay, endOfDay, eachDayOfInterval, formatISO } = require('date-fns');
 const { fetchVideoDetails, getYouTubeVideoId } = require('../services/youtubeService');
 const { generatePresignedUploadUrl, getVideoStream } = require('../services/s3Service');
 
@@ -199,6 +200,65 @@ const getVideoBySlug = asyncHandler(async (req, res) => {
 });
 
 
+/**
+ * @desc    Get daily performance stats for a video
+ * @route   GET /api/videos/:id/daily-performance
+ * @access  Private (Creator)
+ */
+const getDailyPerformance = asyncHandler(async (req, res) => {
+    const video = await Video.findById(req.params.id);
+    if (!video || video.creator.toString() !== req.user.id) {
+        res.status(401).json({ message: 'Not authorized' });
+        return;
+    }
+
+    // Define the date range (e.g., last 30 days)
+    const endDate = endOfDay(new Date());
+    const startDate = startOfDay(new Date(endDate.getTime() - 29 * 24 * 60 * 60 * 1000));
+
+    // Get daily sales
+    const salesData = await Transaction.aggregate([
+        { $match: { video: video._id, status: 'successful', createdAt: { $gte: startDate, $lte: endDate } } },
+        { $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            sales: { $sum: 1 }
+        }},
+        { $sort: { _id: 1 } }
+    ]);
+    
+    // Get daily views
+    const viewsData = await VideoView.aggregate([
+        { $match: { video: video._id, createdAt: { $gte: startDate, $lte: endDate } } },
+        { $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            views: { $sum: 1 }
+        }},
+        { $sort: { _id: 1 } }
+    ]);
+
+    // Create a map of all days in the range
+    const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+    const performanceMap = new Map();
+    allDays.forEach(day => {
+        performanceMap.set(formatISO(day, { representation: 'date' }), { date: format(day, 'MMM d'), sales: 0, views: 0 });
+    });
+
+    // Populate the map with real data
+    salesData.forEach(item => {
+        if (performanceMap.has(item._id)) {
+            performanceMap.get(item._id).sales = item.sales;
+        }
+    });
+    viewsData.forEach(item => {
+        if (performanceMap.has(item._id)) {
+            performanceMap.get(item._id).views = item.views;
+        }
+    });
+
+    res.status(200).json(Array.from(performanceMap.values()));
+});
+
+
 // @desc    Get private details and stats for a single creator video
 // @route   GET /api/videos/:id/stats
 // @access  Private (Creator)
@@ -286,4 +346,5 @@ module.exports = {
     deleteVideo,
     getVideoStats,
     getVideoTransactions,
+    getDailyPerformance,
 };

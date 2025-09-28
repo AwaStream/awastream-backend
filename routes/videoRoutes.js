@@ -64,8 +64,9 @@ const {
     streamVideo,
     deleteVideo,
     getAllCreatorVideos,
-    getVideoStats, // import new functions
-    getVideoTransactions, // import new functions
+    getVideoStats,
+    getDailyPerformance,
+    getVideoTransactions, 
 } = require('../controllers/videoController');
 const { authenticate } = require('../middleware/authMiddleware');
 
@@ -81,6 +82,7 @@ router.route('/stream/:slug').get(streamVideo);
 // --- FIX: These specific slug-based routes MUST come before the generic /:slug route ---
 router.route('/:slug/stats').get(authenticate, getVideoStats);
 router.route('/:slug/transactions').get(authenticate, getVideoTransactions);
+router.route('/:id/daily-performance').get(authenticate, getDailyPerformance);
 
 // --- Generic public and protected routes ---
 router.route('/:slug').get(getVideoBySlug);
