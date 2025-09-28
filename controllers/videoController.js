@@ -185,19 +185,52 @@ const getVideoTransactions = asyncHandler(async (req, res) => {
 // @desc    Get a single video by its slug and track a view
 // @route   GET /api/videos/:slug
 // @access  Public
+// controllers/videoController.js
+
 const getVideoBySlug = asyncHandler(async (req, res) => {
     const video = await Video.findOne({ shareableSlug: req.params.slug })
-        .populate('creator', 'userName avatarUrl'); 
-
+        .populate('creator', 'userName avatarUrl');
+ 
     if (video) {
+        // Increment the total view counter
         Video.updateOne({ _id: video._id }, { $inc: { totalViews: 1 } }).exec();
-        VideoView.create({ video: video._id });
+        
+        // --- FIX IS HERE ---
+        // Create the daily view record, now including the viewer's IP address
+        VideoView.create({ 
+            video: video._id,
+            viewerIp: req.ip // Get the IP from the request object
+        }).catch(err => {
+            // Add a catch block to prevent unhandled promise rejections
+            // This can happen if a user views the same video twice quickly
+            console.warn("Could not create duplicate VideoView record. This is expected.", err.message);
+        });
+ 
         res.json(video);
     } else {
         res.status(404);
         throw new Error('Video not found');
     }
 });
+
+// const getVideoBySlug = asyncHandler(async (req, res) => {
+//     const video = await Video.findOne({ shareableSlug: req.params.slug })
+//         .populate('creator', 'userName avatarUrl'); 
+
+//     if (video) {
+//         Video.updateOne({ _id: video._id }, { $inc: { totalViews: 1 } }).exec();
+//         VideoView.create({
+//              video: video._id
+//              viewerIp: req.ip 
+//             });
+//         res.json(video);
+//     } else {
+//         res.status(404);
+//         throw new Error('Video not found');
+//     }
+// });
+
+
 const getDailyPerformance = asyncHandler(async (req, res) => {
     try {
 
