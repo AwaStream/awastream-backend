@@ -334,12 +334,12 @@ const getVideoStats = asyncHandler(async (req, res) => {
     res.status(200).json({ video, stats });
 });
 
-
-// @desc    Delete a monetized video and its associated data
-// @route   DELETE /api/videos/:id
-// @access  Private (Creator)
+// @desc      Delete a monetized video and its associated data
+// @route     DELETE /api/videos/:slug
+// @access    Private (Creator)
 const deleteVideo = asyncHandler(async (req, res) => {
-    const video = await Video.findById(req.params.id);
+
+    const video = await Video.findOne({ shareableSlug: req.params.slug });
 
     if (!video) {
         res.status(404);
@@ -350,7 +350,8 @@ const deleteVideo = asyncHandler(async (req, res) => {
         res.status(401);
         throw new Error('User not authorized to delete this video');
     }
-    
+
+    // Delete associated data
     await Comment.deleteMany({ video: video._id });
     await VideoView.deleteMany({ video: video._id });
 
@@ -358,33 +359,6 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
     res.status(200).json({ message: 'Video removed successfully' });
 });
-
-
-
-
-// // @desc      Delete a monetized video and its associated data
-// // @route     DELETE /api/videos/:slug
-// // @access    Private (Creator)
-// const deleteVideo = asyncHandler(async (req, res) => {
-//     const video = await Video.findOne({ shareableSlug: req.params.slug });
-
-//     if (!video) {
-//         res.status(404);
-//         throw new Error('Video not found');
-//     }
-
-//     if (video.creator.toString() !== req.user.id) {
-//         res.status(401);
-//         throw new Error('User not authorized to delete this video');
-//     }
-
-//     await Comment.deleteMany({ video: video._id });
-//     await VideoView.deleteMany({ video: video._id });
-
-//     await video.deleteOne();
-
-//     res.status(200).json({ message: 'Video removed successfully' });
-// });
 
 
 /**
