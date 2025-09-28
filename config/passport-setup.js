@@ -29,10 +29,8 @@ passport.use(
                     return done(new Error(`An account with ${email} already exists. Please use your original sign-in method.`), null);
                 }
                 
-                // --- THIS IS THE FIX ---
-                // Provide a fallback of an empty string for the last name.
                 const firstName = name.givenName || 'User';
-                const lastName = name.familyName || ''; // If familyName is undefined, use ''
+                const lastName = name.familyName || ''; 
                 const userName = email.split('@')[0] + Math.floor(Math.random() * 1000);
                 
                 const intent = req.session.intent;
@@ -40,7 +38,7 @@ passport.use(
                 const newUser = await User.create({
                     googleId: id,
                     firstName: firstName,
-                    lastName: lastName, // This will now be an empty string instead of undefined
+                    lastName: lastName, 
                     userName: userName,
                     email: email,
                     avatarUrl: avatarUrl,

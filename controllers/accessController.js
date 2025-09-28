@@ -1,7 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const Video = require('../models/Video');
 const Transaction = require('../models/Transaction');
-// --- FIX: Corrected the import path to match the filename we created ---
 const { generateVideoAccessToken } = require('../utils/generateVideoAccessToken');
 
 /**
@@ -63,9 +62,7 @@ const generateToken = asyncHandler(async (req, res) => {
     } else if (video.sourceType === 'direct') {
         const accessToken = generateVideoAccessToken(user, video);
         
-        // --- FIX: Construct a full, absolute URL for the stream ---
         if (!process.env.BACKEND_URL) {
-            console.error("CRITICAL: BACKEND_URL is not set in your .env file.");
             throw new Error("Server configuration error.");
         }
         
@@ -73,7 +70,7 @@ const generateToken = asyncHandler(async (req, res) => {
         
         res.status(200).json({
             sourceType: 'direct',
-            streamUrl: streamUrl, // Send the full URL to the frontend
+            streamUrl: streamUrl, 
             watermarkText: watermarkText,
         });
     } else {
