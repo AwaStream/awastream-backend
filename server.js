@@ -24,6 +24,7 @@ app.set('trust proxy', 1);
 const allowedOrigins = [
     'http://localhost:5173',
     'https://awastream.onrender.com',
+    'https://awastream.com',
     process.env.FRONTEND_URL
 ];
 
