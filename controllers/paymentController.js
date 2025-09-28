@@ -2,6 +2,7 @@ const asyncHandler = require('express-async-handler');
 const Video = require('../models/Video');
 const Transaction = require('../models/Transaction');
 const crypto = require('crypto');
+const { COMMISSION_RATE } = require('../config/constants');
 const { 
     initializePayment, 
     verifyPayment, 
@@ -24,8 +25,9 @@ const initializeVideoPayment = asyncHandler(async (req, res) => {
     const activeProvider = process.env.ACTIVE_PAYMENT_PROVIDER || 'paystack';
 
     await Transaction.create({
-        viewer: user._id,
-        video: video._id,
+        user: user._id,
+        product: video._id,
+        productType: 'Video',
         creator: video.creator._id,
         amountKobo: video.priceKobo,
         status: 'pending',
@@ -64,14 +66,20 @@ const verifyViewerPayment = asyncHandler(async (req, res) => {
     let verification;
 
     if (provider === 'paystack' && reference) {
-        transaction = await Transaction.findOne({ internalRef: reference, viewer: user.id, video: video.id });
+        transaction = await Transaction.findOne({
+            internalRef: reference,
+            user: user.id,
+            product: video.id
+        });
         if (transaction) {
             verification = await verifyPayment(reference);
         }
     } else if (provider === 'stripe' && sessionId) {
         verification = await verifyPayment(sessionId);
         if (verification && verification.reference) {
-            transaction = await Transaction.findOne({ internalRef: verification.reference, viewer: user.id, video: video.id });
+            transaction = await Transaction.findOne({
+                internalRef: verification.reference,
+                user: user.id, product: video.id });
         }
     } else {
         res.status(400);
@@ -100,8 +108,7 @@ const verifyViewerPayment = asyncHandler(async (req, res) => {
         // Calculate commission and earnings, just like the webhook
         const grossAmountKobo = verification.amount;
         console.log('Gross amount received:', grossAmountKobo, 'Type:', typeof grossAmountKobo);
-        const commissionRate = 0.15; // 15%
-        const commissionKobo = Math.round(grossAmountKobo * commissionRate);
+        const commissionKobo = Math.round(grossAmountKobo * COMMISSION_RATE);
         const creatorEarningsKobo = grossAmountKobo - commissionKobo;
 
         // Update our transaction with all the necessary details

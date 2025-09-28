@@ -1,6 +1,7 @@
 const axios = require('axios');
 const crypto = require('crypto');
 const Transaction = require('../../models/Transaction'); // Adjust the path to your model as needed
+const { COMMISSION_RATE } = require('../../config/constants');
 
 const paystackClient = axios.create({
     baseURL: 'https://api.paystack.co',
@@ -80,8 +81,7 @@ const handleWebhook = async (req) => {
             // 4. Update the transaction with the final details
             const grossAmountKobo = data.amount;
             console.log('Gross amount from webhook:', grossAmountKobo, 'Type:', typeof grossAmountKobo); // Check amount and type
-            const commissionRate = 0.15; // 15%
-            const commissionKobo = Math.round(grossAmountKobo * commissionRate);
+            const commissionKobo = Math.round(grossAmountKobo * COMMISSION_RATE);
             const creatorEarningsKobo = grossAmountKobo - commissionKobo;
 
             transaction.status = 'successful';

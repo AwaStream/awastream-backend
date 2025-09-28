@@ -1,6 +1,8 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const User = require('../../models/User'); // Adjust path as needed
-const Transaction = require('../../models/Transaction'); // Adjust path as needed
+const User = require('../../models/User'); 
+const Transaction = require('../../models/Transaction'); 
+const { COMMISSION_RATE } = require('../../config/constants')
+
 
 /**
  * Initializes a Stripe Checkout session for a one-time payment.
@@ -85,8 +87,7 @@ const handleWebhook = async (req) => {
         
         if (transaction && transaction.status === 'pending') {
             const grossAmountKobo = session.amount_total;
-            const commissionRate = 0.15;
-            const commissionKobo = Math.round(grossAmountKobo * commissionRate);
+            const commissionKobo = Math.round(grossAmountKobo * COMMISSION_RATE);
             const creatorEarningsKobo = grossAmountKobo - commissionKobo;
 
             transaction.status = 'successful';
