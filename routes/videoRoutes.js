@@ -53,7 +53,6 @@
 
 
 
-
 // routes/videoRoutes.js
 const express = require('express');
 const router = express.Router();
@@ -76,16 +75,20 @@ router.route('/')
     .post(authenticate, createVideo);
 
 // --- Specific action routes ---
-router.route('/generate-upload-url').post(authenticate, generateUploadUrl);
-router.route('/stream/:slug').get(streamVideo);
+router.post('/generate-upload-url', authenticate, generateUploadUrl);
+router.get('/stream/:slug', streamVideo);
 
-// --- FIX: These specific slug-based routes MUST come before the generic /:slug route ---
-router.route('/:slug/stats').get(authenticate, getVideoStats);
-router.route('/:slug/transactions').get(authenticate, getVideoTransactions);
-router.route('/:id/daily-performance').get(authenticate, getDailyPerformance);
+// --- 
+// FIX: All slug-based routes now correctly use '/:slug/...'
+// and are placed BEFORE the generic '/:slug' route to avoid conflicts.
+// ---
+router.get('/:slug/stats', authenticate, getVideoStats);
+router.get('/:slug/transactions', authenticate, getVideoTransactions);
+router.get('/:slug/daily-performance', authenticate, getDailyPerformance); // This was the broken route
 
 // --- Generic public and protected routes ---
-router.route('/:slug').get(getVideoBySlug);
-router.route('/:id').delete(authenticate, deleteVideo);
+router.route('/:slug')
+    .get(getVideoBySlug)
+    .delete(authenticate, deleteVideo); // Standardized to use slug
 
 module.exports = router;

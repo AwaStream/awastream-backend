@@ -2,13 +2,13 @@ const asyncHandler = require('express-async-handler');
 const crypto = require('crypto');
 const mongoose = require('mongoose')
 const jwt = require('jsonwebtoken');
+const VideoView = require('../models/VideoView');
 const Video = require('../models/Video');
 const Transaction = require('../models/Transaction');
 const Comment = require('../models/Comment');
-const VideoView = require('../models/VideoView');
-const { startOfDay, endOfDay, eachDayOfInterval, formatISO } = require('date-fns');
 const { fetchVideoDetails, getYouTubeVideoId } = require('../services/youtubeService');
 const { generatePresignedUploadUrl, getVideoStream } = require('../services/s3Service');
+const { startOfDay, endOfDay, eachDayOfInterval, formatISO, format } = require('date-fns');
 
 /**
  * @desc    Monetize a new video from either YouTube or a direct upload.
@@ -191,73 +191,77 @@ const getVideoBySlug = asyncHandler(async (req, res) => {
 
     if (video) {
         Video.updateOne({ _id: video._id }, { $inc: { totalViews: 1 } }).exec();
-        
+        VideoView.create({ video: video._id });
         res.json(video);
     } else {
         res.status(404);
         throw new Error('Video not found');
     }
 });
-
-
-/**
- * @desc    Get daily performance stats for a video
- * @route   GET /api/videos/:id/daily-performance
- * @access  Private (Creator)
- */
 const getDailyPerformance = asyncHandler(async (req, res) => {
-    const video = await Video.findById(req.params.id);
-    if (!video || video.creator.toString() !== req.user.id) {
-        res.status(401).json({ message: 'Not authorized' });
-        return;
+    try {
+
+        const video = await Video.findOne({ shareableSlug: req.params.slug });
+
+        if (!video) {
+            return res.status(404).json({ message: 'Video not found' });
+        }
+
+        if (video.creator.toString() !== req.user.id) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+
+
+        const videoId = video._id;
+        const endDate = endOfDay(new Date());
+        const startDate = startOfDay(new Date(endDate.getTime() - 29 * 24 * 60 * 60 * 1000));
+
+        const salesData = await Transaction.aggregate([
+            { $match: { product: videoId, productType: 'Video', status: 'successful', createdAt: { $gte: startDate, $lte: endDate } } },
+            { $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+                sales: { $sum: 1 }
+            }},
+            { $sort: { _id: 1 } }
+        ]);
+        
+            const viewsData = await VideoView.aggregate([
+            { $match: { video: videoId, createdAt: { $gte: startDate, $lte: endDate } } },
+            { $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+                views: { $sum: 1 }
+            }},
+            { $sort: { _id: 1 } }
+        ]);
+
+        const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+        const performanceMap = new Map();
+        
+        allDays.forEach(day => {
+            const formattedDate = formatISO(day, { representation: 'date' });
+            performanceMap.set(formattedDate, { date: format(day, 'MMM d'), sales: 0, views: 0 });
+        });
+
+        salesData.forEach(item => {
+            if (performanceMap.has(item._id)) {
+                performanceMap.get(item._id).sales = item.sales;
+            }
+        });
+
+        viewsData.forEach(item => {
+            if (performanceMap.has(item._id)) {
+                performanceMap.get(item._id).views = item.views;
+            }
+        });
+
+        const finalResponseData = Array.from(performanceMap.values());
+        
+        res.status(200).json(finalResponseData);
+
+    } catch (error) {
+        res.status(500).json({ message: "An internal server error occurred.", error: error.message });
     }
-
-    // Define the date range (e.g., last 30 days)
-    const endDate = endOfDay(new Date());
-    const startDate = startOfDay(new Date(endDate.getTime() - 29 * 24 * 60 * 60 * 1000));
-
-    // Get daily sales
-    const salesData = await Transaction.aggregate([
-        { $match: { video: video._id, status: 'successful', createdAt: { $gte: startDate, $lte: endDate } } },
-        { $group: {
-            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-            sales: { $sum: 1 }
-        }},
-        { $sort: { _id: 1 } }
-    ]);
-    
-    // Get daily views
-    const viewsData = await VideoView.aggregate([
-        { $match: { video: video._id, createdAt: { $gte: startDate, $lte: endDate } } },
-        { $group: {
-            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-            views: { $sum: 1 }
-        }},
-        { $sort: { _id: 1 } }
-    ]);
-
-    // Create a map of all days in the range
-    const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-    const performanceMap = new Map();
-    allDays.forEach(day => {
-        performanceMap.set(formatISO(day, { representation: 'date' }), { date: format(day, 'MMM d'), sales: 0, views: 0 });
-    });
-
-    // Populate the map with real data
-    salesData.forEach(item => {
-        if (performanceMap.has(item._id)) {
-            performanceMap.get(item._id).sales = item.sales;
-        }
-    });
-    viewsData.forEach(item => {
-        if (performanceMap.has(item._id)) {
-            performanceMap.get(item._id).views = item.views;
-        }
-    });
-
-    res.status(200).json(Array.from(performanceMap.values()));
 });
-
 
 // @desc    Get private details and stats for a single creator video
 // @route   GET /api/videos/:id/stats
@@ -292,11 +296,49 @@ const getVideoStats = asyncHandler(async (req, res) => {
 });
 
 
-// @desc    Delete a monetized video and its associated data
-// @route   DELETE /api/videos/:id
-// @access  Private (Creator)
+// // @desc    Delete a monetized video and its associated data
+// // @route   DELETE /api/videos/:id
+// // @access  Private (Creator)
+// const deleteVideo = asyncHandler(async (req, res) => {
+//     const video = await Video.findById(req.params.id);
+
+//     if (!video) {
+//         res.status(404);
+//         throw new Error('Video not found');
+//     }
+
+//     if (video.creator.toString() !== req.user.id) {
+//         res.status(401);
+//         throw new Error('User not authorized to delete this video');
+//     }
+
+//     // --- UPDATE: Add cascading deletes for related data ---
+//     await Comment.deleteMany({ video: video._id });
+//     await VideoView.deleteMany({ video: video._id });
+//     // Note: Transactions are usually kept for financial records, not deleted.
+
+//     await video.deleteOne();
+
+//     res.status(200).json({ message: 'Video removed successfully' });
+// });
+
+
+
+
+
+
+
+
+
+// controllers/videoController.js
+
+// ... (keep all other functions as they are)
+
+// @desc      Delete a monetized video and its associated data
+// @route     DELETE /api/videos/:slug
+// @access    Private (Creator)
 const deleteVideo = asyncHandler(async (req, res) => {
-    const video = await Video.findById(req.params.id);
+    const video = await Video.findOne({ shareableSlug: req.params.slug });
 
     if (!video) {
         res.status(404);
@@ -308,10 +350,8 @@ const deleteVideo = asyncHandler(async (req, res) => {
         throw new Error('User not authorized to delete this video');
     }
 
-    // --- UPDATE: Add cascading deletes for related data ---
     await Comment.deleteMany({ video: video._id });
     await VideoView.deleteMany({ video: video._id });
-    // Note: Transactions are usually kept for financial records, not deleted.
 
     await video.deleteOne();
 

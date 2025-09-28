@@ -99,15 +99,9 @@ const verifyViewerPayment = asyncHandler(async (req, res) => {
         });
     }
     
-    console.log('--- VERIFYING PAYMENT VIA CALLBACK ---');
-    console.log('Verification data from Paystack:', verification); // Log the whole object
-
-    // --- FIX: Added calculation logic to the fallback ---
-    // If still pending, verify directly and update the transaction fully.
-    if (verification && verification.status === 'success') {
+        if (verification && verification.status === 'success') {
         // Calculate commission and earnings, just like the webhook
         const grossAmountKobo = verification.amount;
-        console.log('Gross amount received:', grossAmountKobo, 'Type:', typeof grossAmountKobo);
         const commissionKobo = Math.round(grossAmountKobo * COMMISSION_RATE);
         const creatorEarningsKobo = grossAmountKobo - commissionKobo;
 
@@ -117,6 +111,10 @@ const verifyViewerPayment = asyncHandler(async (req, res) => {
         transaction.commissionKobo = commissionKobo;
         transaction.creatorEarningsKobo = creatorEarningsKobo;
         await transaction.save();
+
+        if (transaction.productType === 'Video' && transaction.product) {
+            await Video.findByIdAndUpdate(transaction.product, { $inc: { totalSales: 1 } });
+        }
 
         res.status(200).json({ 
             status: 'successful', 

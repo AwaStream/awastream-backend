@@ -1,6 +1,7 @@
 const axios = require('axios');
 const crypto = require('crypto');
-const Transaction = require('../../models/Transaction'); // Adjust the path to your model as needed
+const Transaction = require('../../models/Transaction');
+const Video = require('../../models/Video');
 const { COMMISSION_RATE } = require('../../config/constants');
 
 const paystackClient = axios.create({
@@ -31,7 +32,6 @@ const initialize = async (email, amountKobo, reference) => {
         });
         return response.data.data;
     } catch (error) {
-        console.error("Paystack initialization error:", error.response ? error.response.data : error.message);
         throw new Error("Payment provider could not be reached or has rejected the request.");
     }
 };
@@ -46,7 +46,6 @@ const verify = async (reference) => {
         const response = await paystackClient.get(`/transaction/verify/${reference}`);
         return response.data.data;
     } catch (error) {
-        console.error("Paystack verification error:", error.response ? error.response.data : error.message);
         throw new Error("Could not verify payment with provider.");
     }
 };
@@ -69,9 +68,6 @@ const handleWebhook = async (req) => {
     // 2. We only care about successful charges
     if (event === 'charge.success') {
         const internalRef = data.reference;
-        console.log('--- PROCESSING WEBHOOK ---');
-        console.log('Webhook data from Paystack:', data); // Log the whole object
-
 
         const transaction = await Transaction.findOne({ internalRef });
 
@@ -80,7 +76,6 @@ const handleWebhook = async (req) => {
             
             // 4. Update the transaction with the final details
             const grossAmountKobo = data.amount;
-            console.log('Gross amount from webhook:', grossAmountKobo, 'Type:', typeof grossAmountKobo); // Check amount and type
             const commissionKobo = Math.round(grossAmountKobo * COMMISSION_RATE);
             const creatorEarningsKobo = grossAmountKobo - commissionKobo;
 
@@ -90,7 +85,10 @@ const handleWebhook = async (req) => {
             transaction.creatorEarningsKobo = creatorEarningsKobo;
             
             await transaction.save();
-            console.log(`Webhook processed: Transaction ${transaction.internalRef} successfully updated.`);
+
+            if (transaction.productType === 'Video' && transaction.product) {
+                await Video.findByIdAndUpdate(transaction.product, { $inc: { totalSales: 1 } });
+            }
         }
     }
 };
