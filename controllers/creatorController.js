@@ -45,27 +45,60 @@ const getCreatorProfile = asyncHandler(async (req, res) => {
 });
 
 
+
 /**
- * @desc    Get a creator's public profile and their videos
- * @route   GET /api/creators/:username
+ * @desc    Get a public creator profile and their videos
+ * @route   GET /api/v1/creators/:username
  * @access  Public
  */
 const getPublicCreatorProfile = asyncHandler(async (req, res) => {
-    const creator = await User.findOne({ userName: req.params.username })
-        .select('userName firstName lastName avatarUrl'); // Select only public fields
+    // Find the creator by their username
+    const creator = await User.findOne({ 
+        userName: req.params.username, 
+        role: 'creator' 
+    }).select('firstName lastName userName avatarUrl bio socialLinks'); // Only select public fields
 
     if (!creator) {
         res.status(404);
         throw new Error('Creator not found');
     }
 
-    // Find all videos by this creator
-    const videos = await Video.find({ creator: creator._id })
-        .sort({ createdAt: -1 })
-        .select('title thumbnailUrl priceKobo shareableSlug'); // Select only public fields
+    // Find all active videos for that creator
+    const videos = await Video.find({ 
+        creator: creator._id, 
+        isActive: true 
+    }).sort({ createdAt: -1 }); // Sort by newest first
 
-    res.status(200).json({ creator, videos });
+    res.status(200).json({
+        creator,
+        videos
+    });
 });
+
+
+
+
+// /**
+//  * @desc    Get a creator's public profile and their videos
+//  * @route   GET /api/creators/:username
+//  * @access  Public
+//  */
+// const getPublicCreatorProfile = asyncHandler(async (req, res) => {
+//     const creator = await User.findOne({ userName: req.params.username })
+//         .select('userName firstName lastName avatarUrl'); // Select only public fields
+
+//     if (!creator) {
+//         res.status(404);
+//         throw new Error('Creator not found');
+//     }
+
+//     // Find all videos by this creator
+//     const videos = await Video.find({ creator: creator._id })
+//         .sort({ createdAt: -1 })
+//         .select('title thumbnailUrl priceKobo shareableSlug'); // Select only public fields
+
+//     res.status(200).json({ creator, videos });
+// });
 
 const updateCreatorProfile = asyncHandler(async (req, res) => {
     const { 
