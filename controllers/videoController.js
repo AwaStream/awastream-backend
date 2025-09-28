@@ -3,6 +3,9 @@ const crypto = require('crypto');
 const mongoose = require('mongoose')
 const jwt = require('jsonwebtoken');
 const Video = require('../models/Video');
+const Transaction = require('../models/Transaction');
+const Comment = require('../models/Comment');
+const VideoView = require('../models/VideoView');
 const { fetchVideoDetails, getYouTubeVideoId } = require('../services/youtubeService');
 const { generatePresignedUploadUrl, getVideoStream } = require('../services/s3Service');
 
@@ -159,8 +162,26 @@ const streamVideo = asyncHandler(async (req, res) => {
     }
 });
 
+/**
+ * @desc    Get transaction history for a single video
+ * @route   GET /api/videos/:id/transactions
+ * @access  Private (Creator)
+ */
+const getVideoTransactions = asyncHandler(async (req, res) => {
+    const video = await Video.findOne({ shareableSlug: req.params.slug});
 
-// @desc    Get a single video by its slug for public viewing (for sales page)
+    if (!video || video.creator.toString() !== req.user.id) {
+        res.status(401);
+        throw new Error('Not authorized for this video');
+    }
+
+    const transactions = await Transaction.find({ product: video._id, productType: 'Video', status: 'successful' })
+        .sort({ createdAt: -1 });
+
+    res.status(200).json(transactions);
+});
+
+// @desc    Get a single video by its slug and track a view
 // @route   GET /api/videos/:slug
 // @access  Public
 const getVideoBySlug = asyncHandler(async (req, res) => {
@@ -168,12 +189,75 @@ const getVideoBySlug = asyncHandler(async (req, res) => {
         .populate('creator', 'userName avatarUrl'); 
 
     if (video) {
+        Video.updateOne({ _id: video._id }, { $inc: { totalViews: 1 } }).exec();
+        
         res.json(video);
     } else {
         res.status(404);
         throw new Error('Video not found');
     }
 });
+
+
+// @desc    Get private details and stats for a single creator video
+// @route   GET /api/videos/:id/stats
+// @access  Private (Creator)
+const getVideoStats = asyncHandler(async (req, res) => {
+    const video = await Video.findOne({ shareableSlug: req.params.slug });
+
+    if (!video || video.creator.toString() !== req.user.id) {
+        res.status(401);
+        throw new Error('Not authorized for this video');
+    }
+    const videoId = video._id;
+
+   const earningsAggregation = await Transaction.aggregate([
+        { $match: { product: video._id, productType: 'Video', status: 'successful' } },
+        { $group: { 
+            _id: null, 
+            totalEarnings: { $sum: '$creatorEarningsKobo' }
+        }}
+    ]);
+
+    const conversionRate = video.totalViews > 0 ? ((video.totalSales / video.totalViews) * 100).toFixed(1) : 0;
+
+    const stats = {
+        totalEarningsKobo: earningsAggregation.length > 0 ? earningsAggregation[0].totalEarnings : 0,
+        totalSales: video.totalSales,       // Use the fast counter
+        pageViews: video.totalViews,        // Use the fast counter
+        conversionRate: parseFloat(conversionRate),
+    };
+
+    res.status(200).json({ video, stats });
+});
+
+
+// @desc    Delete a monetized video and its associated data
+// @route   DELETE /api/videos/:id
+// @access  Private (Creator)
+const deleteVideo = asyncHandler(async (req, res) => {
+    const video = await Video.findById(req.params.id);
+
+    if (!video) {
+        res.status(404);
+        throw new Error('Video not found');
+    }
+
+    if (video.creator.toString() !== req.user.id) {
+        res.status(401);
+        throw new Error('User not authorized to delete this video');
+    }
+
+    // --- UPDATE: Add cascading deletes for related data ---
+    await Comment.deleteMany({ video: video._id });
+    await VideoView.deleteMany({ video: video._id });
+    // Note: Transactions are usually kept for financial records, not deleted.
+
+    await video.deleteOne();
+
+    res.status(200).json({ message: 'Video removed successfully' });
+});
+
 
 /**
  * @desc    Get all videos for the logged-in creator
@@ -193,27 +277,6 @@ const getAllCreatorVideos = asyncHandler(async (req, res) => {
     }
 });
 
-// @desc    Delete a monetized video
-// @route   DELETE /api/v1/videos/:id
-// @access  Private (Creator)
-const deleteVideo = asyncHandler(async (req, res) => {
-    const video = await Video.findById(req.params.id);
-
-    if (!video) {
-        res.status(404);
-        throw new Error('Video not found');
-    }
-
-    if (video.creator.toString() !== req.user.id) {
-        res.status(401);
-        throw new Error('User not authorized to delete this video');
-    }
-
-    await video.deleteOne();
-
-    res.status(200).json({ message: 'Video removed successfully' });
-});
-
 module.exports = {
     createVideo,
     getVideoBySlug,
@@ -221,4 +284,6 @@ module.exports = {
     getAllCreatorVideos,
     streamVideo,
     deleteVideo,
+    getVideoStats,
+    getVideoTransactions,
 };

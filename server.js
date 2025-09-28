@@ -75,10 +75,11 @@ const videoRoutes = require('./routes/videoRoutes');
 const creatorRoutes = require('./routes/creatorRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
-const accessRoutes = require('./routes/accessRoutes'); // <-- 3. IMPORT ACCESS ROUTES
+const accessRoutes = require('./routes/accessRoutes');
 const utilsRoutes = require('./routes/utilsRoute');
 const viewerRoutes = require('./routes/viewerRoutes');
-
+const creatorPublicRoutes = require('./routes/creatorPublicRoutes');
+const commentRoutes = require('./routes/commentRoutes');
 
 
 
@@ -90,6 +91,8 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/access', accessRoutes);
 app.use('/api/v1/utils', utilsRoutes);
 app.use('/api/v1/viewer', viewerRoutes);
+app.use('/api/v1/creators', creatorPublicRoutes);
+app.use('/api/v1/comments', commentRoutes);
 
 // --- Health Check Route ---
 app.get('/', (req, res) => {
