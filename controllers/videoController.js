@@ -187,14 +187,12 @@ const getVideoTransactions = asyncHandler(async (req, res) => {
 // @access  Public
 
 const getVideoBySlug = asyncHandler(async (req, res) => {
-    console.log(`✨ [getVideoBySlug] Received request for slug: "${req.params.slug}"`);
 
     try {
         const video = await Video.findOne({ shareableSlug: req.params.slug })
             .populate('creator', 'userName avatarUrl');
 
         if (video) {
-            console.log("✅ [getVideoBySlug] Found video in DB:", video._id.toString());
 
             // The rest of your logic
             Video.updateOne({ _id: video._id }, { $inc: { totalViews: 1 } }).exec();
@@ -208,34 +206,14 @@ const getVideoBySlug = asyncHandler(async (req, res) => {
 
             return res.json(video);
         } else {
-            console.error("❌ [getVideoBySlug] Video not found in DB for the provided slug.");
             res.status(404);
             throw new Error('Video not found');
         }
     } catch (error) {
-        console.error("💥 [getVideoBySlug] A database or other error occurred:", error);
         res.status(500);
         throw new Error('Server error while fetching video.');
     }
 });
-
-// const getVideoBySlug = asyncHandler(async (req, res) => {
-//     const video = await Video.findOne({ shareableSlug: req.params.slug })
-//         .populate('creator', 'userName avatarUrl'); 
-
-//     if (video) {
-//         Video.updateOne({ _id: video._id }, { $inc: { totalViews: 1 } }).exec();
-//         VideoView.create({
-//              video: video._id
-//              viewerIp: req.ip 
-//             });
-//         res.json(video);
-//     } else {
-//         res.status(404);
-//         throw new Error('Video not found');
-//     }
-// });
-
 
 const getDailyPerformance = asyncHandler(async (req, res) => {
     try {
