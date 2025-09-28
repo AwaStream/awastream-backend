@@ -87,8 +87,7 @@ router.get('/:slug/transactions', authenticate, getVideoTransactions);
 router.get('/:slug/daily-performance', authenticate, getDailyPerformance); // This was the broken route
 
 // --- Generic public and protected routes ---
-router.route('/:slug')
-    .get(getVideoBySlug)
+router.route('/:id')
     .delete(authenticate, deleteVideo); // Standardized to use slug
 
 module.exports = router;
