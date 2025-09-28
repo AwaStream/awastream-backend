@@ -44,6 +44,29 @@ const getCreatorProfile = asyncHandler(async (req, res) => {
     }
 });
 
+
+/**
+ * @desc    Get a creator's public profile and their videos
+ * @route   GET /api/creators/:username
+ * @access  Public
+ */
+const getPublicCreatorProfile = asyncHandler(async (req, res) => {
+    const creator = await User.findOne({ userName: req.params.username })
+        .select('userName firstName lastName avatarUrl'); // Select only public fields
+
+    if (!creator) {
+        res.status(404);
+        throw new Error('Creator not found');
+    }
+
+    // Find all videos by this creator
+    const videos = await Video.find({ creator: creator._id })
+        .sort({ createdAt: -1 })
+        .select('title thumbnailUrl priceKobo shareableSlug'); // Select only public fields
+
+    res.status(200).json({ creator, videos });
+});
+
 const updateCreatorProfile = asyncHandler(async (req, res) => {
     const { 
         payoutBankName,
@@ -83,7 +106,7 @@ const getCreatorPayouts = asyncHandler(async (req, res) => {
 
 const getCreatorTransactions = asyncHandler(async (req, res) => {
     const transactions = await Transaction.find({ creator: req.user.id, status: 'successful' })
-        .populate('video', 'title')
+        .populate('product', 'title')
         .sort({ createdAt: -1 });
     res.status(200).json(transactions);
 });
@@ -170,4 +193,5 @@ module.exports = {
     requestPayout,
     getCreatorPayouts,
     getCreatorTransactions,
+    getPublicCreatorProfile,
 };
