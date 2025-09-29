@@ -82,6 +82,10 @@ const viewerRoutes = require('./routes/viewerRoutes');
 const creatorPublicRoutes = require('./routes/creatorPublicRoutes');
 const commentRoutes = require('./routes/commentRoutes');
 
+// In your main server file (e.g., index.js or app.js)
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
 
 
 app.use('/api/v1/auth', authRoutes);
