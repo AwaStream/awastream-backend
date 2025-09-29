@@ -201,7 +201,7 @@ const getVideoBySlug = asyncHandler(async (req, res) => {
                 video: video._id,
                 viewerIp: req.ip
             }).catch(err => {
-                console.warn("[getVideoBySlug] Could not create duplicate VideoView record. This is expected.", err.message);
+                console.warn(err.message);
             });
 
             return res.json(video);
