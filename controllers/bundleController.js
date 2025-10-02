@@ -67,7 +67,7 @@ const createBundle = asyncHandler(async (req, res) => {
 const getBundleBySlug = asyncHandler(async (req, res) => {
     const bundle = await Bundle.findOne({ shareableSlug: req.params.slug })
         .populate('creator', 'userName avatarUrl')
-        .populate('videos', 'title thumbnailUrl shareableSlug sourceType priceNaira'); // Populate videos for display
+        .populate('videos', 'title thumbnailUrl shareableSlug sourceType priceNaira creator'); // Populate videos for display
 
     if (!bundle) {
         res.status(404);
@@ -82,6 +82,7 @@ const getBundleBySlug = asyncHandler(async (req, res) => {
         shareableSlug: video.shareableSlug,
         sourceType: video.sourceType,
         priceNaira: video.priceNaira,
+        creator: video.creator,
     }));
 
     const publicBundleData = {
