@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { 
-    initializeVideoPayment, 
+    initializePayment, 
     verifyViewerPayment,
     handlePaystackWebhook,
     handleStripeWebhook,
@@ -9,7 +9,7 @@ const {
 } = require('../controllers/paymentController');
 const { authenticate } = require('../middleware/authMiddleware');
 
-router.post('/initialize', authenticate, initializeVideoPayment);
+router.post('/initialize', authenticate, initializePayment);
 router.post('/verify', authenticate, verifyViewerPayment);
 
 // --- WEBHOOKS ---

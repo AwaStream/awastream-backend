@@ -1,24 +1,38 @@
 const asyncHandler = require('express-async-handler');
 const Video = require('../models/Video');
+const Bundle = require('../models/Bundle');
 const Transaction = require('../models/Transaction');
 const crypto = require('crypto');
 const { COMMISSION_RATE } = require('../config/constants');
 const { 
-    initializePayment, 
+    initializePayment: initializePaymentGateway, 
     verifyPayment, 
     handlePaystackWebhook: handlePaystackWebhookFromGateway, 
     handleStripeWebhook: handleStripeWebhookFromGateway 
 } = require('../services/paymentGateway');
-const { handleTransferWebhook } = require('../services/payoutService'); // Import transfer webhook handler
+const { handleTransferWebhook } = require('../services/payoutService');
 
-const initializeVideoPayment = asyncHandler(async (req, res) => {
-    const { videoId } = req.body;
+const initializePayment = asyncHandler(async (req, res) => {
+    const { videoId, bundleId } = req.body;
     const user = req.user;
-    const video = await Video.findById(videoId).populate('creator');
 
-    if (!video) {
+    let product;
+    let productType;
+
+      if (videoId) {
+        product = await Video.findById(videoId).populate('creator');
+        productType = 'Video';
+    } else if (bundleId) {
+        product = await Bundle.findById(bundleId).populate('creator');
+        productType = 'Bundle';
+    } else {
+        res.status(400);
+        throw new Error('Either videoId or bundleId is required to initialize payment.');
+    }
+
+     if (!product) {
         res.status(404);
-        throw new Error('Video not found');
+        throw new Error(`${productType} not found`);
     }
 
     const internalRef = `AWAS-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
@@ -26,20 +40,21 @@ const initializeVideoPayment = asyncHandler(async (req, res) => {
 
     await Transaction.create({
         user: user._id,
-        product: video._id,
-        productType: 'Video',
-        creator: video.creator._id,
-        amountKobo: video.priceKobo,
+        product: product._id,
+        productType: productType,
+        creator: product.creator._id,
+        amountKobo: product.priceKobo,
         status: 'pending',
         internalRef: internalRef,
         paymentProvider: activeProvider,
     });
     
-    const videoDetails = { title: video.title, slug: video.shareableSlug };
-    const paymentData = await initializePayment(user.email, video.priceKobo, internalRef, videoDetails);
+    const productDetails = { title: product.title, slug: product.shareableSlug, productType }; // Pass productType for success URL
+    const paymentData = await initializePaymentGateway(user.email, product.priceKobo, internalRef, productDetails); // Renamed to avoid clash
 
     res.status(200).json({ authorizationUrl: paymentData.authorization_url });
-});
+
+    });
 
 
 /**
@@ -48,28 +63,36 @@ const initializeVideoPayment = asyncHandler(async (req, res) => {
  * @access   Private
  */
 const verifyViewerPayment = asyncHandler(async (req, res) => {
-    const { provider, reference, sessionId, slug } = req.body;
+    const { provider, reference, sessionId, slug, productType: requestedProductType } = req.body;
     const user = req.user;
 
-    if (!slug) {
+    if (!slug || !requestedProductType) {
         res.status(400);
-        throw new Error("Video slug is required for verification.");
+        throw new Error("Product slug and productType are required for verification.");
     }
     
-    const video = await Video.findOne({ shareableSlug: slug });
-    if (!video) {
+    // --- FIX 1: Find the product based on its type ---
+    let product;
+    if (requestedProductType === 'Video') {
+        product = await Video.findOne({ shareableSlug: slug });
+    } else if (requestedProductType === 'Bundle') {
+        product = await Bundle.findOne({ shareableSlug: slug });
+    }
+    
+    if (!product) {
         res.status(404);
-        throw new Error("Video associated with this payment not found.");
+        throw new Error("Product associated with this payment not found.");
     }
 
     let transaction;
     let verification;
 
+    // --- FIX 2: Use the generic 'product' variable to find the transaction ---
     if (provider === 'paystack' && reference) {
         transaction = await Transaction.findOne({
             internalRef: reference,
             user: user.id,
-            product: video.id
+            product: product.id // Use generic product ID
         });
         if (transaction) {
             verification = await verifyPayment(reference);
@@ -79,7 +102,9 @@ const verifyViewerPayment = asyncHandler(async (req, res) => {
         if (verification && verification.reference) {
             transaction = await Transaction.findOne({
                 internalRef: verification.reference,
-                user: user.id, product: video.id });
+                user: user.id,
+                product: product.id // Use generic product ID
+            });
         }
     } else {
         res.status(400);
@@ -91,34 +116,36 @@ const verifyViewerPayment = asyncHandler(async (req, res) => {
         throw new Error('Matching transaction not found. Verification failed.');
     }
 
-    // If webhook has already updated the status, we can succeed early
     if (transaction.status === 'successful') {
         return res.status(200).json({ 
             status: 'successful', 
-            videoSlug: video.shareableSlug 
+            productSlug: product.shareableSlug, // Use generic slug name
+            productType: requestedProductType,
         });
     }
     
-        if (verification && verification.status === 'success') {
-        // Calculate commission and earnings, just like the webhook
+    if (verification && verification.status === 'success') {
         const grossAmountKobo = verification.amount;
         const commissionKobo = Math.round(grossAmountKobo * COMMISSION_RATE);
         const creatorEarningsKobo = grossAmountKobo - commissionKobo;
 
-        // Update our transaction with all the necessary details
         transaction.status = 'successful';
         transaction.providerRef = verification.id.toString();
         transaction.commissionKobo = commissionKobo;
         transaction.creatorEarningsKobo = creatorEarningsKobo;
         await transaction.save();
 
-        if (transaction.productType === 'Video' && transaction.product) {
+        // --- FIX 3: Increment sales counter on the correct model ---
+        if (transaction.productType === 'Video') {
             await Video.findByIdAndUpdate(transaction.product, { $inc: { totalSales: 1 } });
+        } else if (transaction.productType === 'Bundle') {
+            await Bundle.findByIdAndUpdate(transaction.product, { $inc: { totalSales: 1 } });
         }
 
         res.status(200).json({ 
             status: 'successful', 
-            videoSlug: video.shareableSlug 
+            productSlug: product.shareableSlug, // Use generic slug name
+            productType: requestedProductType,
         });
     } else {
         res.status(400).json({ status: 'failed', message: 'Payment not confirmed by provider.' });
@@ -135,16 +162,16 @@ const handleStripeWebhook = asyncHandler(async (req, res) => {
     res.sendStatus(200);
 });
 
-// NEW FUNCTION
+
 const handlePaystackTransferWebhook = asyncHandler(async (req, res) => {
     await handleTransferWebhook(req); 
     res.sendStatus(200);
 });
 
 module.exports = {
-    initializeVideoPayment,
+    initializePayment,
     verifyViewerPayment,
     handlePaystackWebhook,
     handleStripeWebhook,
-    handlePaystackTransferWebhook, // EXPORT the new function
+    handlePaystackTransferWebhook,
 };

@@ -81,6 +81,7 @@ const utilsRoutes = require('./routes/utilsRoute');
 const viewerRoutes = require('./routes/viewerRoutes');
 const creatorPublicRoutes = require('./routes/creatorPublicRoutes');
 const commentRoutes = require('./routes/commentRoutes');
+const bundleRoutes = require('./routes/bundleRoutes');
 
 app.get('/health', (req, res) => {
   res.status(200).send('OK');
@@ -89,6 +90,7 @@ app.get('/health', (req, res) => {
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/videos', videoRoutes);
+app.use('/api/v1/bundles', bundleRoutes);
 app.use('/api/v1/creator', creatorRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/admin', adminRoutes);

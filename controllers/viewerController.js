@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
-const Transaction = require('../models/Transaction');
 const Video = require('../models/Video');
+const Bundle = require('../models/Bundle'); // Import Bundle model
+const Transaction = require('../models/Transaction');
 
 // @desc    Get viewer's purchased videos and suggested content
 // @route   GET /api/v1/viewer/library
@@ -12,22 +13,43 @@ const getLibraryData = asyncHandler(async (req, res) => {
         status: 'successful',
     });
 
-    // 2. Extract the video IDs from those transactions
-    const purchasedVideoIds = successfulTransactions.map(t => t.video);
+    // 2. Extract product IDs from those transactions, distinguishing between videos and bundles
+    const purchasedVideoIdsFromTransactions = successfulTransactions
+        .filter(t => t.productType === 'Video')
+        .map(t => t.product);
 
-    // 3. Fetch the full video details for the purchased videos
-    // We also populate the creator's information to display their name.
-    const purchased = await Video.find({
-        '_id': { $in: purchasedVideoIds }
-    }).populate('creator', 'firstName lastName');
+    const purchasedBundleIds = successfulTransactions
+        .filter(t => t.productType === 'Bundle')
+        .map(t => t.product);
 
-    // 4. Fetch some other videos to suggest (that the user hasn't bought)
-    // Here we limit it to 10 recent videos as a simple suggestion algorithm.
-    const suggested = await Video.find({
-        '_id': { $nin: purchasedVideoIds } // The key is excluding what they already own
-    }).populate('creator', 'firstName lastName').limit(10).sort({ createdAt: -1 });
+    // 3. Fetch full details for purchased videos
+    const purchasedVideos = await Video.find({
+        '_id': { $in: purchasedVideoIdsFromTransactions }
+    }).populate('creator', 'userName');
 
-    res.status(200).json({ purchased, suggested });
+    // 4. Fetch full details for purchased bundles
+    const purchasedBundles = await Bundle.find({
+        '_id': { $in: purchasedBundleIds }
+    }).populate('creator', 'userName')
+      .populate('videos', 'title thumbnailUrl shareableSlug sourceType'); // Populate videos inside bundles
+
+    // Combine all unique video IDs from direct purchases and within purchased bundles
+    let allAccessedVideoIds = new Set();
+    purchasedVideos.forEach(v => allAccessedVideoIds.add(v._id.toString()));
+    purchasedBundles.forEach(bundle => {
+        bundle.videos.forEach(video => allAccessedVideoIds.add(video._id.toString()));
+    });
+
+    // 5. Fetch some other videos to suggest (that the user hasn't bought or accessed via bundle)
+    const suggestedVideos = await Video.find({
+        '_id': { $nin: Array.from(allAccessedVideoIds) } // Exclude all videos user already owns/accessed
+    }).populate('creator', 'firstName lastName userName').limit(10).sort({ createdAt: -1 });
+
+    res.status(200).json({ 
+        purchasedVideos, 
+        purchasedBundles, 
+        suggestedVideos 
+    });
 });
 
 module.exports = {

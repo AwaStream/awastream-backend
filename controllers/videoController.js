@@ -204,7 +204,19 @@ const getVideoBySlug = asyncHandler(async (req, res) => {
                 console.warn(err.message);
             });
 
-            return res.json(video);
+            const publicVideoData = {
+        _id: video._id,
+        title: video.title,
+        description: video.description,
+        thumbnailUrl: video.thumbnailUrl,
+        priceNaira: video.priceNaira,
+        priceKobo: video.priceKobo,
+        shareableSlug: video.shareableSlug,
+        creator: video.creator,
+        sourceType: video.sourceType,
+    };
+
+            return res.json(publicVideoData);
         } else {
             res.status(404);
             throw new Error('Video not found');

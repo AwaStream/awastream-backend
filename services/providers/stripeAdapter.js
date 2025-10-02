@@ -1,5 +1,6 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const User = require('../../models/User'); 
+const Bundle = require('../../models/Bundle');
 const Transaction = require('../../models/Transaction'); 
 const { COMMISSION_RATE } = require('../../config/constants')
 
@@ -9,10 +10,10 @@ const { COMMISSION_RATE } = require('../../config/constants')
  * @param {string} email - The customer's email.
  * @param {number} amountKobo - The amount in Kobo.
  * @param {string} reference - Our unique internal transaction reference.
- * @param {object} videoDetails - Contains video title for the checkout page.
+ * @param {object} productDetails - Contains video title for the checkout page.
  * @returns {Promise<object>} - The checkout session object from Stripe, containing the URL.
  */
-const initialize = async (email, amountKobo, reference, videoDetails) => {
+const initialize = async (email, amountKobo, reference, productDetails) => {
     // Find or create a Stripe Customer to associate the payment with
     let customer = await stripe.customers.list({ email: email, limit: 1 });
     let customerId;
@@ -40,10 +41,10 @@ const initialize = async (email, amountKobo, reference, videoDetails) => {
             quantity: 1,
         }],
         // We use the session_id to verify on the frontend
-        success_url: `${process.env.CLIENT_URL}/view/${videoDetails.slug}?stripe_session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.CLIENT_URL}/view/${videoDetails.slug}?status=cancelled`,
+        success_url: `${process.env.CLIENT_URL}/view/${productDetails.productType.toLowerCase()}/${productDetails.slug}?stripe_session_id={CHECKOUT_SESSION_ID}`, // Adjust success URL
+        cancel_url: `${process.env.CLIENT_URL}/view/${productDetails.productType.toLowerCase()}/${productDetails.slug}?status=cancelled`,
         metadata: {
-            internalRef: reference, // Pass our internal reference to Stripe
+            internalRef: reference,
         }
     });
 
@@ -96,6 +97,13 @@ const handleWebhook = async (req) => {
             transaction.creatorEarningsKobo = creatorEarningsKobo;
             
             await transaction.save();
+
+            if (transaction.productType === 'Video') {
+                await Video.findByIdAndUpdate(transaction.product, { $inc: { totalSales: 1 } });
+            } else if (transaction.productType === 'Bundle') {
+                await Bundle.findByIdAndUpdate(transaction.product, { $inc: { totalSales: 1 } });
+            }
+            
             console.log(`Stripe Webhook: Transaction ${transaction.internalRef} successfully updated.`);
         }
     }

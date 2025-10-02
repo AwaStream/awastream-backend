@@ -17,8 +17,8 @@ const getProvider = () => {
 };
 
 // These functions call the active provider's methods
-const initializePayment = (email, amountKobo, ref, videoDetails) => {
-    return getProvider().initialize(email, amountKobo, ref, videoDetails);
+const initializePayment = (email, amountKobo, ref, productDetails) => {
+    return getProvider().initialize(email, amountKobo, ref, productDetails);
 };
 
 const verifyPayment = (reference) => {
