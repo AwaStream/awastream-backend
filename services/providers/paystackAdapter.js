@@ -2,7 +2,9 @@ const axios = require('axios');
 const crypto = require('crypto');
 const Transaction = require('../../models/Transaction');
 const Video = require('../../models/Video');
-const Bundle = require('../../models/Bundle'); // Added Bundle model import
+const Bundle = require('../../models/Bundle');
+const User = require('../../models/User');
+const Notification = require('../../models/Notification');
 const { COMMISSION_RATE } = require('../../config/constants');
 
 const paystackClient = axios.create({
@@ -80,6 +82,26 @@ const handleWebhook = async (req) => {
                 await Video.findByIdAndUpdate(transaction.product, { $inc: { totalSales: 1 } });
             } else if (transaction.productType === 'Bundle') {
                 await Bundle.findByIdAndUpdate(transaction.product, { $inc: { totalSales: 1 } });
+            }
+
+             try {
+                const [buyer, product] = await Promise.all([
+                    User.findById(transaction.user).lean(),
+                    transaction.productType === 'Video' 
+                        ? Video.findById(transaction.product).lean() 
+                        : Bundle.findById(transaction.product).lean()
+                ]);
+
+                if (buyer && product) {
+                    await Notification.create({
+                        user: transaction.creator, // The creator gets the notification
+                        type: 'new_sale',
+                        message: `${buyer.firstName} purchased your ${transaction.productType.toLowerCase()}: "${product.title}"`,
+                        link: `/${transaction.productType.toLowerCase()}s/${product.shareableSlug}`
+                    });
+                }
+            } catch (notificationError) {
+                console.error("Failed to create sale notification from Paystack webhook:", notificationError);
             }
         }
     }

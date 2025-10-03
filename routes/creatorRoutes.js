@@ -7,6 +7,7 @@ const {
     requestPayout,
     getCreatorPayouts,
     getCreatorTransactions,
+    getCreatorAnalytics,
  } = require('../controllers/creatorController');
 const { authenticate, authorize } = require('../middleware/authMiddleware');
 
@@ -17,6 +18,7 @@ router.get('/dashboard', getCreatorDashboard);
 router.route('/profile').get(getCreatorProfile).put(updateCreatorProfile);
 router.post('/payouts', requestPayout);
 router.get('/payouts', getCreatorPayouts);
-router.get('/transactions',  getCreatorTransactions)
+router.get('/transactions',  getCreatorTransactions),
+router.get('/analytics', getCreatorAnalytics);
 
 module.exports = router;

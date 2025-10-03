@@ -6,6 +6,9 @@ const Payout = require('../models/Payout');
 const User = require('../models/User');
 const Settings = require('../models/Settings');
 const payoutService = require('../services/payoutService');
+const { startOfDay, subDays } = require('date-fns');
+const Bundle = require('../models/Bundle');
+const VideoView = require('../models/VideoView');
 
 const getCreatorDashboard = asyncHandler(async (req, res) => {
     const creatorId = new mongoose.Types.ObjectId(req.user.id);
@@ -30,6 +33,119 @@ const getCreatorDashboard = asyncHandler(async (req, res) => {
         totalSales,
         monetizedVideosCount,
         recentVideos,
+    });
+});
+
+/**
+ * @desc    Get comprehensive analytics for a creator.
+ * @route   GET /api/creator/analytics
+ * @access  Private (Creator)
+ */
+const getCreatorAnalytics = asyncHandler(async (req, res) => {
+    const creatorId = new mongoose.Types.ObjectId(req.user.id);
+    const range = req.query.range || '30d'; // Default to 30 days
+
+    let startDate;
+    const endDate = new Date();
+
+    if (range === '7d') {
+        startDate = startOfDay(subDays(endDate, 6));
+    } else if (range === '90d') {
+        startDate = startOfDay(subDays(endDate, 89));
+    } else if (range === 'all') {
+        startDate = new Date('2000-01-01'); // A date far in the past
+    } else { // Default to 30d
+        startDate = startOfDay(subDays(endDate, 29));
+    }
+
+    // --- 1. Fetch all content for this creator ---
+    const [videos, bundles] = await Promise.all([
+        Video.find({ creator: creatorId }).lean(),
+        Bundle.find({ creator: creatorId }).lean()
+    ]);
+    
+    const allProductIds = [
+        ...videos.map(v => v._id),
+        ...bundles.map(b => b._id)
+    ];
+
+    // --- 2. Run all aggregations in parallel ---
+    const [salesData, viewsData, transactionList] = await Promise.all([
+        // Aggregate sales data for charts and stats
+        Transaction.aggregate([
+            { $match: { creator: creatorId, status: 'successful', createdAt: { $gte: startDate, $lte: endDate } } },
+            { $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+                totalEarningsKobo: { $sum: '$creatorEarningsKobo' },
+                salesCount: { $sum: 1 }
+            }},
+            { $sort: { _id: 1 } }
+        ]),
+        // Aggregate views data for charts
+        VideoView.aggregate([
+            { $match: { video: { $in: videos.map(v => v._id) }, createdAt: { $gte: startDate, $lte: endDate } } },
+            { $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+                viewsCount: { $sum: 1 }
+            }},
+            { $sort: { _id: 1 } }
+        ]),
+        // Get recent transactions for the list
+        Transaction.find({ creator: creatorId, status: 'successful', createdAt: { $gte: startDate, $lte: endDate } })
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .populate('product', 'title')
+            .lean()
+    ]);
+
+    // --- 3. Process and combine data ---
+    let totalEarningsKobo = 0;
+    let totalSales = 0;
+    const salesMap = new Map(salesData.map(item => [item._id, item]));
+    salesData.forEach(item => {
+        totalEarningsKobo += item.totalEarningsKobo;
+        totalSales += item.salesCount;
+    });
+
+    let totalViews = 0;
+    const viewsMap = new Map(viewsData.map(item => [item._id, item]));
+    viewsData.forEach(item => { totalViews += item.viewsCount });
+
+    // Combine chart data
+    const allDates = new Set([...salesMap.keys(), ...viewsMap.keys()]);
+    const chartData = Array.from(allDates).sort().map(date => ({
+        date,
+        earnings: (salesMap.get(date)?.totalEarningsKobo || 0) / 100,
+        sales: salesMap.get(date)?.salesCount || 0,
+        views: viewsMap.get(date)?.viewsCount || 0,
+    }));
+
+    // Calculate top performing content
+    const contentWithStats = [...videos, ...bundles].map(item => {
+        const type = item.videos ? 'Bundle' : 'Video'; // Check if it's a bundle
+        return {
+            _id: item._id,
+            title: item.title,
+            type: type,
+            earnings: (item.totalSales * (item.priceKobo * 0.85)) / 100, // Approximate earnings
+            sales: item.totalSales || 0,
+            views: item.totalViews || 0,
+            conversionRate: (item.totalViews > 0) ? ((item.totalSales / item.totalViews) * 100).toFixed(1) : 0,
+        };
+    }).sort((a, b) => b.earnings - a.earnings); // Sort by earnings
+
+    // --- 4. Assemble the final response ---
+    res.status(200).json({
+        stats: {
+            totalEarningsKobo,
+            totalSales,
+            totalViews,
+            conversionRate: (totalViews > 0) ? ((totalSales / totalViews) * 100).toFixed(1) : 0,
+            productCount: allProductIds.length
+        },
+        chartData,
+        topContent: contentWithStats.slice(0, 10), // Top 10 products
+        recentTransactions: transactionList,
     });
 });
 
@@ -202,4 +318,5 @@ module.exports = {
     getCreatorPayouts,
     getCreatorTransactions,
     getPublicCreatorProfile,
+    getCreatorAnalytics,
 };

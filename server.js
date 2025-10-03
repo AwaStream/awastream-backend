@@ -82,6 +82,7 @@ const viewerRoutes = require('./routes/viewerRoutes');
 const creatorPublicRoutes = require('./routes/creatorPublicRoutes');
 const commentRoutes = require('./routes/commentRoutes');
 const bundleRoutes = require('./routes/bundleRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 app.get('/health', (req, res) => {
   res.status(200).send('OK');
@@ -99,6 +100,7 @@ app.use('/api/v1/utils', utilsRoutes);
 app.use('/api/v1/viewer', viewerRoutes);
 app.use('/api/v1/creators', creatorPublicRoutes);
 app.use('/api/v1/comments', commentRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 
 // --- Health Check Route ---
 app.get('/', (req, res) => {

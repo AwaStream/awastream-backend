@@ -2,6 +2,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const User = require('../../models/User'); 
 const Bundle = require('../../models/Bundle');
 const Transaction = require('../../models/Transaction'); 
+const Notification = require('../../models/Notification'); 
 const { COMMISSION_RATE } = require('../../config/constants')
 
 
@@ -102,6 +103,29 @@ const handleWebhook = async (req) => {
                 await Video.findByIdAndUpdate(transaction.product, { $inc: { totalSales: 1 } });
             } else if (transaction.productType === 'Bundle') {
                 await Bundle.findByIdAndUpdate(transaction.product, { $inc: { totalSales: 1 } });
+            }
+
+             // --- ADD THIS NOTIFICATION LOGIC ---
+            try {
+                // Stripe checkout session has the customer's email
+                const buyerEmail = session.customer_details.email;
+
+                const product = await (transaction.productType === 'Video' 
+                    ? Video.findById(transaction.product).lean() 
+                    : Bundle.findById(transaction.product).lean());
+
+                if (product) {
+                    // We use the email as a fallback if we can't find the user by ID quickly
+                    const buyerName = session.customer_details.name || buyerEmail;
+                    await Notification.create({
+                        user: transaction.creator, // The creator gets the notification
+                        type: 'new_sale',
+                        message: `${buyerName} purchased your ${transaction.productType.toLowerCase()}: "${product.title}"`,
+                        link: `/${transaction.productType.toLowerCase()}s/${product.shareableSlug}`
+                    });
+                }
+            } catch (notificationError) {
+                console.error("Failed to create sale notification from Stripe webhook:", notificationError);
             }
             
             console.log(`Stripe Webhook: Transaction ${transaction.internalRef} successfully updated.`);

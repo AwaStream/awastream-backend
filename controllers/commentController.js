@@ -1,3 +1,5 @@
+const Notification = require('../models/Notification');
+const User = require('../models/User');
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const Comment = require('../models/Comment');
@@ -68,6 +70,27 @@ const createComment = asyncHandler(async (req, res) => {
     const comment = await Comment.create(commentPayload);
     const newComment = await Comment.findById(comment._id).populate('user', 'firstName lastName avatarUrl role'); // Changed 'author' to 'user'
 
+    if (parentId) {
+    // It's a reply
+    const parentComment = await Comment.findById(parentId).populate('user');
+    // Notify the original commenter (if they are not the one replying)
+    if (parentComment.user._id.toString() !== userId) {
+        await Notification.create({
+            user: parentComment.user._id,
+            type: 'new_reply',
+            message: `${req.user.firstName} replied to your comment on "${video.title}"`,
+            link: `/view/video/${video.shareableSlug}`
+        });
+    }
+} else {
+    // It's a top-level comment, notify the video creator
+    await Notification.create({
+        user: video.creator,
+        type: 'new_comment',
+        message: `${req.user.firstName} commented on your video: "${video.title}"`,
+        link: `/view/video/${video.shareableSlug}`
+    });
+}
     res.status(201).json(newComment);
 });
 

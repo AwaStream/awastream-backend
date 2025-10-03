@@ -1,3 +1,4 @@
+const Notification = require('../models/Notification');
 const asyncHandler = require('express-async-handler');
 const Video = require('../models/Video');
 const Bundle = require('../models/Bundle');
@@ -134,6 +135,16 @@ const verifyViewerPayment = asyncHandler(async (req, res) => {
         transaction.commissionKobo = commissionKobo;
         transaction.creatorEarningsKobo = creatorEarningsKobo;
         await transaction.save();
+
+        if (transaction.status === 'successful') {
+        const productType = transaction.productType.toLowerCase(); // 'video' or 'bundle'
+        await Notification.create({
+            user: transaction.creator, // The creator gets the notification
+            type: 'new_sale',
+            message: `${req.user.firstName} purchased your ${productType}: "${product.title}"`,
+            link: `/${productType}s/${product.shareableSlug}` // e.g., /videos/slug or /bundles/slug
+        });
+    }
 
         // --- FIX 3: Increment sales counter on the correct model ---
         if (transaction.productType === 'Video') {
