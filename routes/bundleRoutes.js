@@ -7,6 +7,7 @@ const {
     deleteBundle,
     reorderBundleVideos,
     addVideoToBundle,
+    updateBundle,
     removeVideoFromBundle,
 } = require('../controllers/bundleController');
 const { authenticate } = require('../middleware/authMiddleware');
@@ -17,13 +18,13 @@ router.route('/')
 
     router.put('/:bundleSlug/videos/reorder', authenticate, reorderBundleVideos);
 
-// --- NEW ROUTES FOR ADDING/REMOVING A SPECIFIC VIDEO ---
 router.route('/:bundleSlug/videos/:videoId')
     .post(authenticate, addVideoToBundle)
     .delete(authenticate, removeVideoFromBundle);
 
 router.route('/:slug')
-    .get(getBundleBySlug)                    // Get public details of a single bundle
+    .get(getBundleBySlug)
+    .put(authenticate, updateBundle)                  // Get public details of a single bundle
     .delete(authenticate, deleteBundle);     // Delete a bundle (by creator)
 
 module.exports = router;

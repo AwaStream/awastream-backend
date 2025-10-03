@@ -1,8 +1,8 @@
 // routes/creatorPublicRoutes.js
 const express = require('express');
 const router = express.Router();
-const { getPublicCreatorProfile } = require('../controllers/creatorController');
+const {  profileRedirect } = require('../controllers/creatorController');
 
-router.get('/:username', getPublicCreatorProfile);
+router.get('/:username', profileRedirect);
 
 module.exports = router;

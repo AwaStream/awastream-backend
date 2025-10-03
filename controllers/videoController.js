@@ -109,6 +109,44 @@ const createVideo = asyncHandler(async (req, res) => {
 
 
 /**
+ * @desc    Update a monetized video
+ * @route   PUT /api/videos/:slug
+ * @access  Private (Creator)
+ */
+const updateVideo = asyncHandler(async (req, res) => {
+    const { title, description, priceNaira } = req.body;
+
+    const video = await Video.findOne({ shareableSlug: req.params.slug });
+
+    if (!video) {
+        res.status(404);
+        throw new Error('Video not found');
+    }
+
+    // Check for ownership
+    if (video.creator.toString() !== req.user.id) {
+        res.status(401);
+        throw new Error('User not authorized to update this video');
+    }
+
+    video.title = title || video.title;
+    video.description = description || video.description;
+    
+    if (priceNaira) {
+        const priceValue = parseFloat(priceNaira);
+        if (isNaN(priceValue) || priceValue <= 0) {
+            res.status(400);
+            throw new Error('Please provide a valid price.');
+        }
+        video.priceNaira = priceValue;
+        video.priceKobo = Math.round(priceValue * 100);
+    }
+
+    const updatedVideo = await video.save();
+    res.status(200).json(updatedVideo);
+});
+
+/**
  * @desc    Generate a presigned URL for direct S3 upload by calling the S3 service.
  * @route   POST /api/videos/generate-upload-url
  * @access  Private (Creator)
@@ -371,6 +409,7 @@ const getAllCreatorVideos = asyncHandler(async (req, res) => {
 
 module.exports = {
     createVideo,
+    updateVideo,
     getVideoBySlug,
     generateUploadUrl,
     getAllCreatorVideos,

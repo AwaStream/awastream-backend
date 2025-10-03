@@ -8,8 +8,7 @@ const { sendEmail } = require('../services/emailService');
 
 const sendTokenResponse = (user, statusCode, res) => {
     const { accessToken, refreshToken } = generateTokens(user._id, user.role);
-
-    // --- FIX: Corrected cookie options for development vs. production ---
+    
     const cookieOptions = {
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
         httpOnly: true,

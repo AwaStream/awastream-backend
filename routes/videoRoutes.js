@@ -5,6 +5,7 @@ const {
     getVideoBySlug,
     generateUploadUrl,
     streamVideo,
+    updateVideo,
     deleteVideo,
     getAllCreatorVideos,
     getVideoStats,
@@ -29,6 +30,7 @@ router.get('/:slug/daily-performance', authenticate, getDailyPerformance);
 // --- FIX: Generic public and protected routes ---
 router.route('/:slug')
     .get(getVideoBySlug)
+    .put(authenticate, updateVideo)
     .delete(authenticate, deleteVideo); 
 
 module.exports = router;

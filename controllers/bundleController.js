@@ -59,6 +59,45 @@ const createBundle = asyncHandler(async (req, res) => {
     }
 });
 
+
+/**
+ * @desc    Update a bundle
+ * @route   PUT /api/bundles/:slug
+ * @access  Private (Creator)
+ */
+const updateBundle = asyncHandler(async (req, res) => {
+    const { title, description, priceNaira } = req.body;
+    
+    const bundle = await Bundle.findOne({ shareableSlug: req.params.slug });
+
+    if (!bundle) {
+        res.status(404);
+        throw new Error('Bundle not found');
+    }
+    
+    if (bundle.creator.toString() !== req.user.id) {
+        res.status(401);
+        throw new Error('User not authorized to update this bundle');
+    }
+
+    bundle.title = title || bundle.title;
+    bundle.description = description !== undefined ? description : bundle.description;
+
+    if (priceNaira) {
+        const priceValue = parseFloat(priceNaira);
+        if (isNaN(priceValue) || priceValue <= 0) {
+            res.status(400);
+            throw new Error('Please provide a valid price.');
+        }
+        bundle.priceNaira = priceValue;
+        bundle.priceKobo = Math.round(priceValue * 100);
+    }
+    
+    const updatedBundle = await bundle.save();
+    res.status(200).json(updatedBundle);
+});
+
+
 /**
  * @desc    Get a single bundle by its slug
  * @route   GET /api/bundles/:slug
@@ -237,6 +276,7 @@ const removeVideoFromBundle = asyncHandler(async (req, res) => {
 
 module.exports = {
     createBundle,
+    updateBundle,
     getBundleBySlug,
     getAllCreatorBundles,
     deleteBundle,

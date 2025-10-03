@@ -4,9 +4,11 @@ const Video = require('../models/Video');
 const Transaction = require('../models/Transaction');
 const Payout = require('../models/Payout');
 const User = require('../models/User');
+const UsernameHistory = require('../models/UsernameHistory');
 const Settings = require('../models/Settings');
 const payoutService = require('../services/payoutService');
 const { startOfDay, subDays } = require('date-fns');
+
 const Bundle = require('../models/Bundle');
 const VideoView = require('../models/VideoView');
 
@@ -191,7 +193,6 @@ const getPublicCreatorProfile = asyncHandler(async (req, res) => {
     res.status(200).json({ creator, content: allContent });
 });
 
-
 const updateCreatorProfile = asyncHandler(async (req, res) => {
     const { 
         firstName, lastName, userName, bio, websiteUrl,
@@ -204,8 +205,21 @@ const updateCreatorProfile = asyncHandler(async (req, res) => {
         res.status(404); throw new Error('User not found');
     }
 
-    // FIX: Check for 'undefined' instead of truthiness to allow saving empty strings
-    if (firstName !== undefined) user.firstName = firstName;
+    const oldUsername = user.userName;
+    const newUsername = userName;
+
+    // --- NEW LOGIC FOR USERNAME CHANGE ---
+    if (newUsername && newUsername !== oldUsername) {
+        // Check if the new username is already taken by another user
+        const existingUser = await User.findOne({ userName: newUsername });
+        if (existingUser) {
+            res.status(400);
+            throw new Error('Username is already taken. Please choose another.');
+        }
+        user.userName = newUsername;
+    }
+
+     if (firstName !== undefined) user.firstName = firstName;
     if (lastName !== undefined) user.lastName = lastName;
     if (userName !== undefined) user.userName = userName;
     if (bio !== undefined) user.bio = bio;
@@ -217,9 +231,30 @@ const updateCreatorProfile = asyncHandler(async (req, res) => {
     if (payoutAccountNumber !== undefined) user.payoutAccountNumber = payoutAccountNumber;
     if (payoutAccountName !== undefined) user.payoutAccountName = payoutAccountName;
 
-    const updatedCreator = await user.save();
+    
+    
 
-    res.json(updatedCreator);
+    try {
+        const updatedCreator = await user.save();
+
+        // If username was changed successfully, save the old one to the history
+        if (newUsername && newUsername !== oldUsername) {
+            await UsernameHistory.create({
+                username: oldUsername,
+                user: user._id,
+            });
+        }
+        
+        res.json(updatedCreator);
+
+    } catch (error) {
+        // This specifically handles potential race conditions on the unique username index
+        if (error.code === 11000) {
+            res.status(400);
+            throw new Error('Username is already taken. Please choose another.');
+        }
+        throw error; // Re-throw other errors
+    }
 });
 
 
@@ -228,12 +263,14 @@ const getCreatorPayouts = asyncHandler(async (req, res) => {
     res.status(200).json(payouts);
 });
 
+
 const getCreatorTransactions = asyncHandler(async (req, res) => {
     const transactions = await Transaction.find({ creator: req.user.id, status: 'successful' })
         .populate('product', 'title')
         .sort({ createdAt: -1 });
     res.status(200).json(transactions);
 });
+
 
 const requestPayout = asyncHandler(async (req, res) => {
     const { amountKobo } = req.body;
@@ -310,6 +347,35 @@ const requestPayout = asyncHandler(async (req, res) => {
     }
 });
 
+
+/**
+ * @desc    Handles requests for creator profiles, including redirects for old usernames.
+ * @route   GET /api/v1/creators/:username
+ * @access  Public
+ */
+const profileRedirect = asyncHandler(async (req, res, next) => {
+    const { username } = req.params;
+
+    // 1. First, try to find an active user with this username
+    const user = await User.findOne({ userName: username });
+    if (user) {
+        // Username is current, proceed to the normal profile function
+        return getPublicCreatorProfile(req, res, next);
+    }
+
+    // 2. If not found, check the history for an old username
+    const history = await UsernameHistory.findOne({ username: username }).populate('user', 'userName');
+    if (history && history.user) {
+        // Old username found, perform a permanent redirect to the new URL
+        return res.redirect(301, `/${history.user.userName}`);
+    }
+
+    // 3. If not found in users or history, it's a 404
+    res.status(404);
+    throw new Error('Creator not found');
+});
+
+
 module.exports = {
     getCreatorDashboard,
     getCreatorProfile,
@@ -319,4 +385,5 @@ module.exports = {
     getCreatorTransactions,
     getPublicCreatorProfile,
     getCreatorAnalytics,
+    profileRedirect, 
 };
