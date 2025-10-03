@@ -21,6 +21,8 @@ const TransactionSchema = new mongoose.Schema({
         enum: ['Video', 'Bundle']
     },
 
+    productTitle: { type: String, required: true },
+
     amountKobo: { type: Number, required: true }, 
     commissionKobo: { type: Number, default: 0 }, 
     creatorEarningsKobo: { type: Number, default: 0 },

@@ -150,7 +150,8 @@ const getCreatorAnalytics = asyncHandler(async (req, res) => {
 });
 
 const getCreatorProfile = asyncHandler(async (req, res) => {
-    const creator = await User.findById(req.user.id).select('userName email firstName lastName avatarUrl payoutBankName payoutAccountNumber payoutAccountName');
+    const creator = await User.findById(req.user.id)
+        .select('userName email firstName lastName avatarUrl bio websiteUrl twitterUrl youtubeUrl payoutBankName payoutAccountNumber payoutAccountName');
     
     if (creator) {
         res.json(creator);
@@ -172,56 +173,55 @@ const getPublicCreatorProfile = asyncHandler(async (req, res) => {
     const creator = await User.findOne({ 
         userName: req.params.username, 
         role: 'creator' 
-    }).select('firstName lastName userName avatarUrl bio socialLinks'); // Only select public fields
+    }).select('firstName lastName userName avatarUrl bio websiteUrl twitterUrl avatarUrl youtubeUrl'); // Only select public fields
 
     if (!creator) {
         res.status(404);
         throw new Error('Creator not found');
     }
 
-    // Find all active videos for that creator
-    const videos = await Video.find({ 
-        creator: creator._id, 
-        isActive: true 
-    }).sort({ createdAt: -1 }); // Sort by newest first
+    // Fetch public content (videos and bundles)
+    const [videos, bundles] = await Promise.all([
+        Video.find({ creator: creator._id, isActive: true }).sort({ createdAt: -1 }),
+        Bundle.find({ creator: creator._id, isActive: true }).sort({ createdAt: -1 })
+    ]);
 
-    res.status(200).json({
-        creator,
-        videos
-    });
+    const allContent = [...videos, ...bundles].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.status(200).json({ creator, content: allContent });
 });
+
 
 const updateCreatorProfile = asyncHandler(async (req, res) => {
     const { 
-        payoutBankName,
-        payoutAccountNumber,
-        payoutAccountName,
-        firstName,
-        lastName,
-        userName
+        firstName, lastName, userName, bio, websiteUrl,
+        twitterUrl, youtubeUrl, avatarUrl, payoutBankName,
+        payoutAccountNumber, payoutAccountName,
     } = req.body;
 
-    const fieldsToUpdate = {};
-    if (payoutBankName !== undefined) fieldsToUpdate.payoutBankName = payoutBankName;
-    if (payoutAccountNumber !== undefined) fieldsToUpdate.payoutAccountNumber = payoutAccountNumber;
-    if (payoutAccountName !== undefined) fieldsToUpdate.payoutAccountName = payoutAccountName;
-    if (firstName) fieldsToUpdate.firstName = firstName;
-    if (lastName) fieldsToUpdate.lastName = lastName;
-    if (userName) fieldsToUpdate.userName = userName;
-
-    const updatedCreator = await User.findByIdAndUpdate(
-        req.user.id,
-        { $set: fieldsToUpdate },
-        { new: true, runValidators: true }
-    ).select('-passwordHash');
-
-    if (updatedCreator) {
-        res.json(updatedCreator);
-    } else {
-        res.status(404);
-        throw new Error('Creator not found');
+    const user = await User.findById(req.user.id);
+    if (!user) {
+        res.status(404); throw new Error('User not found');
     }
+
+    // FIX: Check for 'undefined' instead of truthiness to allow saving empty strings
+    if (firstName !== undefined) user.firstName = firstName;
+    if (lastName !== undefined) user.lastName = lastName;
+    if (userName !== undefined) user.userName = userName;
+    if (bio !== undefined) user.bio = bio;
+    if (websiteUrl !== undefined) user.websiteUrl = websiteUrl;
+    if (twitterUrl !== undefined) user.twitterUrl = twitterUrl;
+    if (youtubeUrl !== undefined) user.youtubeUrl = youtubeUrl;
+    if (avatarUrl !== undefined) user.avatarUrl = avatarUrl;
+    if (payoutBankName !== undefined) user.payoutBankName = payoutBankName;
+    if (payoutAccountNumber !== undefined) user.payoutAccountNumber = payoutAccountNumber;
+    if (payoutAccountName !== undefined) user.payoutAccountName = payoutAccountName;
+
+    const updatedCreator = await user.save();
+
+    res.json(updatedCreator);
 });
+
 
 const getCreatorPayouts = asyncHandler(async (req, res) => {
     const payouts = await Payout.find({ creator: req.user.id }).sort({ createdAt: -1 });

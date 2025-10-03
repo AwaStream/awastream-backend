@@ -10,6 +10,10 @@ const UserSchema = new mongoose.Schema({
     lastName: { type: String, required: false, default: '' },
     userName: { type: String, required: true, trim: true },
     avatarUrl: { type: String },
+    bio: { type: String, maxlength: 200 }, // A short bio
+    websiteUrl: { type: String },
+    twitterUrl: { type: String },
+    youtubeUrl: {type: String},
     googleId: { type: String, unique: true, sparse: true },
     role: { type: String, enum: ['creator', 'viewer', 'superadmin'], default: 'creator' },
     payoutBankName: { type: String, trim: true },

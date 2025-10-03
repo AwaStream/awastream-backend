@@ -43,6 +43,7 @@ const initializePayment = asyncHandler(async (req, res) => {
         user: user._id,
         product: product._id,
         productType: productType,
+        productTitle: product.title,
         creator: product.creator._id,
         amountKobo: product.priceKobo,
         status: 'pending',
