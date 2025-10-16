@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getAdminDashboard, getCreatorDetails, getAllViewers, approvePayout, getAllUsers, updateUserStatus, rejectPayout, getPayouts } = require('../controllers/adminController');
+const { getAdminDashboard, getCreatorDetails, getAllViewers, approvePayout, getAllUsers,getOnboarderDetails, getOnboarders,updateUserRole,  updateUserStatus, rejectPayout, getPayouts } = require('../controllers/adminController');
 const { getSettings, updateSettings, updateAdminProfile } = require('../controllers/settingsController');
 const { authenticate, authorize } = require('../middleware/authMiddleware');
 
@@ -17,8 +17,13 @@ router.get('/payouts', getPayouts);
 router.put('/payouts/:id/approve', approvePayout);
 router.put('/payouts/:id/reject', rejectPayout)
 
+
 router.get('/users', getAllUsers);
 router.put('/users/:id/status', updateUserStatus);
+
+router.get('/onboarders', getOnboarders);
+router.get('/onboarders/:id', getOnboarderDetails);
+router.put('/users/:id/role', updateUserRole);
 
 // Settings Routes
 router.route('/settings').get(getSettings).put(updateSettings);

@@ -177,18 +177,6 @@ const rejectPayout = asyncHandler(async (req, res) => {
     res.status(200).json(updatedPayout);
 });
 
-// @desc    Get a list of all creators
-// @route   GET /api/v1/admin/users
-// @access  Private (Superadmin)
-const getAllUsers = asyncHandler(async (req, res) => {
-    const pageSize = 20;
-    const page = Number(req.query.pageNumber) || 1;
-    const count = await User.countDocuments({ role: 'creator' });
-    const users = await User.find({ role: 'creator' })
-        .select('userName email status createdAt lastLogin')
-        .limit(pageSize).skip(pageSize * (page - 1)).sort({ createdAt: -1 });
-    res.json({ users, page, pages: Math.ceil(count / pageSize) });
-});
 
 // @desc    Update a user's status
 // @route   PUT /api/v1/admin/users/:id/status
@@ -209,6 +197,107 @@ const updateUserStatus = asyncHandler(async (req, res) => {
     }
 });
 
+
+/**
+ * @desc    Get all users with the 'onboarder' role.
+ * @route   GET /api/v1/admin/onboarders
+ * @access  Private (Superadmin)
+ */
+const getOnboarders = asyncHandler(async (req, res) => {
+    const onboarders = await User.find({ role: 'onboarder' })
+        .select('firstName lastName userName email createdAt')
+        .sort({ createdAt: -1 });
+    res.status(200).json(onboarders);
+});
+
+const getOnboarderDetails = asyncHandler(async (req, res) => {
+    const onboarderId = new mongoose.Types.ObjectId(req.params.id);
+    // The fix is applied here 👇
+    const onboarder = await User.findById(onboarderId).select('firstName lastName userName email role'); 
+    
+    if (!onboarder || onboarder.role !== 'onboarder') {
+        res.status(404);
+        throw new Error('Onboarder not found.');
+    }
+
+    const referredCreators = await User.find({ referredBy: onboarderId }).select('_id userName firstName lastName');
+    const referredCreatorIds = referredCreators.map(c => c._id);
+
+    const salesAggregation = await Transaction.aggregate([
+        { $match: { creator: { $in: referredCreatorIds }, status: 'successful' } },
+        { $group: { 
+            _id: null, 
+            totalSalesValueKobo: { $sum: '$amountKobo' },
+            totalTransactions: { $sum: 1 }
+        }}
+    ]);
+    const stats = salesAggregation[0] || { totalSalesValueKobo: 0, totalTransactions: 0 };
+
+    res.status(200).json({
+        onboarder,
+        referredCreators,
+        stats: {
+            referredCreatorCount: referredCreators.length,
+            totalSalesValueKobo: stats.totalSalesValueKobo,
+            totalTransactions: stats.totalTransactions,
+        }
+    });
+});
+
+
+/**
+ * @desc    Update a user's role (e.g., promote to 'onboarder').
+ * @route   PUT /api/v1/admin/users/:id/role
+ * @access  Private (Superadmin)
+ */
+const updateUserRole = asyncHandler(async (req, res) => {
+    const { role } = req.body;
+    const validRoles = ['creator', 'viewer', 'onboarder', 'superadmin'];
+    if (!role || !validRoles.includes(role)) {
+        res.status(400);
+        throw new Error('A valid role is required.');
+    }
+    const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true }).select('firstName lastName userName email role');
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found.');
+    }
+    res.status(200).json(user);
+});
+
+/**
+ * @desc    Get a paginated list of all users (creators & viewers)
+ * @route   GET /api/v1/admin/users
+ * @access  Private (Superadmin)
+ */
+const getAllUsers = asyncHandler(async (req, res) => {
+    const pageSize = 20;
+    const page = Number(req.query.pageNumber) || 1;
+    
+    // Build the query object
+    const query = { role: { $in: ['creator', 'viewer', 'onboarder'] } }; // Exclude other superadmins
+
+    if (req.query.keyword) {
+        const keyword = { $regex: req.query.keyword, $options: 'i' };
+        query.$or = [
+            { firstName: keyword },
+            { lastName: keyword },
+            { userName: keyword },
+            { email: keyword },
+        ];
+    }
+    
+    const count = await User.countDocuments(query);
+    const users = await User.find(query)
+        .select('firstName lastName userName email role status createdAt')
+        .limit(pageSize)
+        .skip(pageSize * (page - 1))
+        .sort({ createdAt: -1 });
+        
+    res.json({ users, page, pages: Math.ceil(count / pageSize) });
+});
+
+
 module.exports = {
     getAdminDashboard,
     getPayouts,
@@ -218,4 +307,7 @@ module.exports = {
     updateUserStatus,
     getCreatorDetails,
     getAllViewers,
+    updateUserRole,
+    getOnboarders,
+    getOnboarderDetails,
 };

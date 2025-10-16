@@ -80,6 +80,7 @@ const accessRoutes = require('./routes/accessRoutes');
 const utilsRoutes = require('./routes/utilsRoute');
 const viewerRoutes = require('./routes/viewerRoutes');
 const creatorPublicRoutes = require('./routes/creatorPublicRoutes');
+const onboarderRoutes = require('./routes/onboarderRoutes');
 const commentRoutes = require('./routes/commentRoutes');
 const bundleRoutes = require('./routes/bundleRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
@@ -99,6 +100,7 @@ app.use('/api/v1/access', accessRoutes);
 app.use('/api/v1/utils', utilsRoutes);
 app.use('/api/v1/viewer', viewerRoutes);
 app.use('/api/v1/creators', creatorPublicRoutes);
+app.use('/api/v1/onboarder', onboarderRoutes);
 app.use('/api/v1/comments', commentRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 

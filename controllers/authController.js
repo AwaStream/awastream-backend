@@ -83,7 +83,7 @@ const refreshToken = asyncHandler(async (req, res) => {
 });
 
 const registerUser = asyncHandler(async (req, res) => {
-    const { firstName, lastName, userName, email, password, intent } = req.body;
+    const { firstName, lastName, userName, email, password, intent, referralCode } = req.body;
     if (!firstName || !lastName || !userName || !email || !password) {
         res.status(400);
         throw new Error('Please provide all required fields.');
@@ -104,6 +104,15 @@ const registerUser = asyncHandler(async (req, res) => {
         authMethod: 'local',
         role: intent === 'viewer' ? 'viewer' : 'creator',
     });
+    // If a referral code was provided, find the onboarder and link the new user to them
+   // This is the corrected code ✅
+if (referralCode) {
+    const referrer = await User.findOne({ userName: referralCode, role: 'onboarder' });
+    if (referrer) {
+        user.referredBy = referrer._id; // Update the user object we created
+        await user.save(); // And save the change to the database
+    }
+}
     if (!user) {
         res.status(400);
         throw new Error('Invalid user data');
