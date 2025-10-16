@@ -19,6 +19,7 @@ const sendTokenResponse = (user, statusCode, res) => {
         // For production (cross-domain), 'none' and 'secure' are required.
         cookieOptions.secure = true;
         cookieOptions.sameSite = 'none';
+        cookieOptions.domain = '.awastream.com';
     } else {
         // In development on localhost, 'lax' is the standard and correct setting.
         cookieOptions.sameSite = 'lax';
