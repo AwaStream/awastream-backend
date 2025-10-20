@@ -6,8 +6,9 @@ const passport = require('passport');
 const cookieParser = require('cookie-parser');
 const MongoStore = require('connect-mongo'); 
 const connectDB = require('./config/db');
-const { notFound, errorHandler } = require('./middleware/errorMiddleware');
-
+const { notFound } = require('./middleware/errorMiddleware');
+const logger = require('./config/logger');
+const morgan = require('morgan');
 // Load environment variables
 dotenv.config();
 
@@ -20,6 +21,7 @@ const app = express();
 app.set('trust proxy', 1);
 
 // --- Middleware ---
+app.use(morgan('combined', { stream: { write: (message) => logger.info(message.trim()) } }));
 
 const allowedOrigins = [
     'http://localhost:5173',
@@ -111,10 +113,25 @@ app.get('/', (req, res) => {
 
 // --- Error Handling Middleware ---
 app.use(notFound);
-app.use(errorHandler);
+app.use((err, req, res, next) => {
+    logger.error(`${err.status || 500 } - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`, {
+        stack: err.stack,
+        path: req.originalUrl,
+        method: req.method,
+        ip: req.ip
+    } );
+
+    const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+    res.status(statusCode);
+    res.json( {
+        message: err.message,
+        stack: process.env.NODE_ENV === 'production' ? '🥞' : err.stack,
+});
+
+});
 
 // --- Start Server ---
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
-    console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+    logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });

@@ -24,7 +24,6 @@ const sendTokenResponse = (user, statusCode, res) => {
         // In development on localhost, 'lax' is the standard and correct setting.
         cookieOptions.sameSite = 'lax';
     }
-    // --- END FIX ---
 
     res.cookie('refreshToken', refreshToken, cookieOptions);
 
@@ -151,8 +150,10 @@ const loginUser = asyncHandler(async (req, res) => {
         throw new Error('Invalid email or password');
     }
     if (!user.isEmailVerified) {
-        res.status(403);
-        throw new Error('Please verify your email address before logging in. You can request a new verification link.');
+        return res.status(403).json({
+            error: 'EMAIL_NOT_VERIFIED',
+            message: 'Please verify your email address before logging in.'
+        });
     }
     if (user.authMethod !== 'local') {
         res.status(401);

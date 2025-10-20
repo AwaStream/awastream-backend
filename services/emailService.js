@@ -3,7 +3,7 @@ const nodemailer = require('nodemailer');
 const handlebars = require('handlebars');
 const fs = require('fs');
 const path = require('path');
-const Settings = require('../models/Settings'); // Import the Settings model
+const Settings = require('../models/Settings');
 
 // --- Helper function to render Handlebars templates ---
 const renderTemplate = (templateName, data) => {
