@@ -8,6 +8,7 @@ const MongoStore = require('connect-mongo');
 const connectDB = require('./config/db');
 const { notFound } = require('./middleware/errorMiddleware');
 const logger = require('./config/logger');
+const { authLimiter, apiLimiter, userLimiter } = require('./middleware/rateLimiterMiddleware');
 const morgan = require('morgan');
 // Load environment variables
 dotenv.config();
@@ -92,7 +93,8 @@ app.get('/health', (req, res) => {
 });
 
 
-app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/', apiLimiter);
+app.use('/api/v1/auth', authLimiter, authRoutes);
 app.use('/api/v1/videos', videoRoutes);
 app.use('/api/v1/bundles', bundleRoutes);
 app.use('/api/v1/creator', creatorRoutes);
