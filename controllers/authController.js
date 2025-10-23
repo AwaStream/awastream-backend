@@ -84,10 +84,6 @@ const refreshToken = asyncHandler(async (req, res) => {
 
 const registerUser = asyncHandler(async (req, res) => {
     const { firstName, lastName, userName, email, password, intent, referralCode } = req.body;
-    if (!firstName || !lastName || !userName || !email || !password) {
-        res.status(400);
-        throw new Error('Please provide all required fields.');
-    }
     const userExists = await User.findOne({ email });
     if (userExists) {
         res.status(400);
@@ -95,6 +91,7 @@ const registerUser = asyncHandler(async (req, res) => {
     }
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
+    let userRole = (intent === 'viewer') ? 'viewer' : 'creator';
     const user = await User.create({
         firstName,
         lastName,
@@ -102,10 +99,8 @@ const registerUser = asyncHandler(async (req, res) => {
         email,
         passwordHash,
         authMethod: 'local',
-        role: intent === 'viewer' ? 'viewer' : 'creator',
+        role: userRole,
     });
-    // If a referral code was provided, find the onboarder and link the new user to them
-   // This is the corrected code ✅
 if (referralCode) {
     const referrer = await User.findOne({ userName: referralCode, role: 'onboarder' });
     if (referrer) {
@@ -190,10 +185,6 @@ const googleCallback = asyncHandler(async (req, res) => {
 
 const verifyEmail = asyncHandler(async (req, res) => {
     const { token } = req.body;
-    if (!token) {
-        res.status(400);
-        throw new Error('Verification token is required.');
-    }
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
     const user = await User.findOne({
         emailVerificationToken: hashedToken,
@@ -212,10 +203,6 @@ const verifyEmail = asyncHandler(async (req, res) => {
 
 const resendVerificationEmail = asyncHandler(async (req, res) => {
     const { email } = req.body;
-    if (!email) {
-        res.status(400);
-        throw new Error('Email is required.');
-    }
     const user = await User.findOne({ email });
     if (!user) {
         res.status(404);
@@ -247,10 +234,6 @@ const resendVerificationEmail = asyncHandler(async (req, res) => {
 
 const forgotPassword = asyncHandler(async (req, res) => {
     const { email } = req.body;
-    if (!email) {
-        res.status(400);
-        throw new Error('Email is required.');
-    }
     const user = await User.findOne({ email });
     if (!user) {
         res.status(404);
@@ -282,10 +265,6 @@ const forgotPassword = asyncHandler(async (req, res) => {
 const resetPassword = asyncHandler(async (req, res) => {
     const { token } = req.query;
     const { password } = req.body;
-    if (!token || !password) {
-        res.status(400);
-        throw new Error('Request must include a token and a new password.');
-    }
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
     const user = await User.findOne({
         resetPasswordToken: hashedToken,
@@ -302,6 +281,36 @@ const resetPassword = asyncHandler(async (req, res) => {
     await user.save();
     sendTokenResponse(user, 200, res);
 });
+
+
+const changePassword = asyncHandler(async (req, res) => {
+    
+    const { currentPassword, newPassword } = req.body;
+    
+    const user = await User.findById(req.user.id).select('+passwordHash');
+
+    if (!user) {
+
+        res.status(404);
+        throw new Error('User not found.');
+    }
+
+    // 3. Verify their current password
+    const isMatch = await user.matchPassword(currentPassword);
+
+    if (!isMatch) {
+        res.status(401); 
+        throw new Error('Incorrect current password.');
+    }
+
+    // 4. Hash and save the new password
+    const salt = await bcrypt.genSalt(10);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.status(200).json({ message: 'Password changed successfully.' });
+});
+
 
 const logoutUser = asyncHandler(async (req, res) => {
     res.cookie('refreshToken', '', {
@@ -344,4 +353,5 @@ module.exports = {
     resendVerificationEmail,
     forgotPassword,
     resetPassword,
+    changePassword,
 };

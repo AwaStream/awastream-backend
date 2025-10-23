@@ -1,11 +1,13 @@
 const express = require('express');
 const dotenv = require('dotenv');
+const helmet = require('helmet')
 const cors = require('cors');
 const session = require('express-session');
 const passport = require('passport');
 const cookieParser = require('cookie-parser');
 const MongoStore = require('connect-mongo'); 
 const connectDB = require('./config/db');
+require('./config/redisClient');
 const { notFound } = require('./middleware/errorMiddleware');
 const logger = require('./config/logger');
 const { authLimiter, apiLimiter, userLimiter } = require('./middleware/rateLimiterMiddleware');
@@ -22,6 +24,7 @@ const app = express();
 app.set('trust proxy', 1);
 
 // --- Middleware ---
+app.use(helmet());
 app.use(morgan('combined', { stream: { write: (message) => logger.info(message.trim()) } }));
 
 const allowedOrigins = [
