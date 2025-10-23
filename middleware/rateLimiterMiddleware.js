@@ -1,5 +1,5 @@
 const rateLimit = require('express-rate-limit');
-// 1. Import the ipKeyGenerator helpers
+// 1. Import the ipKeyGenerator helper
 const { ipKeyGenerator } = require('express-rate-limit');
 const { RedisStore } = require('rate-limit-redis');
 const redisClient = require('../config/redisClient');
