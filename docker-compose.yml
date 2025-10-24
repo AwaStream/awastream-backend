@@ -9,10 +9,20 @@ services:
       # Maps your host port 5001 to the container's port 5001
       - "5001:5001"
     volumes:
-      # Syncs your local code to the container for live-reloading
-      - ./:/app
-      - /dev/null:/app/.env
-      # Prevents your local node_modules from being copied over
+      # Mount specific directories for nodemon live-reloading
+      - ./controllers:/app/controllers
+      - ./middleware:/app/middleware
+      - ./models:/app/models
+      - ./routes:/app/routes
+      - ./config:/app/config
+      - ./utils:/app/utils
+      
+      # Mount specific root files
+      - ./server.js:/app/server.js
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
+
+      # This volume is still correct and keeps your node_modules
       - api-node-modules:/app/node_modules
     restart: unless-stopped
     depends_on:
