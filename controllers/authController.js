@@ -6,43 +6,60 @@ const User = require('../models/User');
 const generateTokens = require('../utils/generateTokens');
 const { sendEmail } = require('../services/emailService');
 
+
 const sendTokenResponse = (user, statusCode, res) => {
-    const { accessToken, refreshToken } = generateTokens(user._id, user.role);
+    const { accessToken, refreshToken } = generateTokens(user._id, user.role);
+
+    // REFRESH Token Options (HTTP-ONLY)
+    const refreshTokenCookieOptions = {
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        httpOnly: true, // KEEP: HTTP-Only
+        path: '/',
+    };
     
-    const cookieOptions = {
-        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-        httpOnly: true,
+    // ACCESS Token Options (NON-HTTP-ONLY)
+    const accessTokenCookieOptions = {
+        expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+        // FIX: MUST BE NON-HTTP-ONLY
         path: '/',
     };
 
-    if (process.env.NODE_ENV === 'production') {
-        // For production (cross-domain), 'none' and 'secure' are required.
-        cookieOptions.secure = true;
-        cookieOptions.sameSite = 'none';
-        cookieOptions.domain = '.awastream.com';
-    } else {
-        // In development on localhost, 'lax' is the standard and correct setting.
-        cookieOptions.sameSite = 'lax';
-    }
+    if (process.env.NODE_ENV === 'production') {
+        refreshTokenCookieOptions.secure = true;
+        refreshTokenCookieOptions.sameSite = 'none';
+        // FIX: Also apply secure/sameSite to Access Token
+        accessTokenCookieOptions.secure = true;
+        accessTokenCookieOptions.sameSite = 'none';
+        
+        // You only need to set the domain if the backend and frontend are on different subdomains
+        // e.g., api.awastream.com and app.awastream.com. If they are, apply domain here.
+        // cookieOptions.domain = '.awastream.com'; 
+    } else {
+        refreshTokenCookieOptions.sameSite = 'lax';
+        accessTokenCookieOptions.sameSite = 'lax';
+    }
 
-    res.cookie('refreshToken', refreshToken, cookieOptions);
+    res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions);
+    // FIX: Set the Access Token as a non-httpOnly cookie
+    res.cookie('accessToken', accessToken, accessTokenCookieOptions);
 
-    let redirectPath;
-    switch (user.role) {
+
+    let redirectPath;
+     switch (user.role) {
         case 'superadmin': redirectPath = '/admin/dashboard'; break;
         case 'creator': redirectPath = '/dashboard'; break;
         case 'viewer': redirectPath = '/library'; break;
         default: redirectPath = '/';
     }
 
-    res.status(statusCode).json({
-        token: accessToken,
-        redirectPath: redirectPath,
-        user: {
-            firstName: user.firstName,
-            avatarUrl: user.avatarUrl
-        }
-    });
+    res.status(statusCode).json({
+    
+        redirectPath: redirectPath,
+        user: {
+            firstName: user.firstName,
+            avatarUrl: user.avatarUrl
+        }
+    });
 };
 
 
@@ -179,7 +196,6 @@ const googleCallback = asyncHandler(async (req, res) => {
     // 2. Options for the short-lived ACCESS token
     const accessTokenCookieOptions = {
         expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
-        httpOnly: true,
         path: '/',
     };
 
