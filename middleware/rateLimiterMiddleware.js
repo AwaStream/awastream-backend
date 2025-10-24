@@ -22,8 +22,8 @@ const userStore = new RedisStore({
 
 // 1. STRICT/BRUTE-FORCE Limiter
 const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 5,
+    windowMs: 5 * 60 * 1000,
+    max: 10,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -59,7 +59,7 @@ const userLimiter = rateLimit({
         return ipKeyGenerator(req);
     },
     message: {
-        message: 'You have exceeded your request quota. Please try again in 15 minutes.',
+        message: 'You have exceeded your request quota. Please wait 5 minutes before trying again.',
         code: 429
     },
     store: userStore,
