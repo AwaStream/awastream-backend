@@ -41,7 +41,7 @@ passport.use(
                 const userIntent = req.session.intent;
 
                 // Use 'viewer' as the strict default if the intent is missing or invalid
-                let newRole = 'viewer';
+                let newRole = 'creator';
                 if (allowedIntents.includes(userIntent)) {
                     newRole = userIntent;
                 }
