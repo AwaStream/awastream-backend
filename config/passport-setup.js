@@ -1,6 +1,7 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('../models/User');
+const { uploadExternalImageToCloudinary } = require('../utils/cloudinary')
 
 passport.use(
     new GoogleStrategy(
@@ -13,7 +14,14 @@ passport.use(
         async (req, accessToken, refreshToken, profile, done) => {
             const { id, name, emails, photos } = profile;
             const email = emails[0].value;
-            const avatarUrl = photos ? photos[0].value : null;
+
+            const originalAvatarUrl = photos ? photos[0].value : null;
+
+            let avatarUrl = null;
+            if (originalAvatarUrl) {
+                avatarUrl = await uploadExternalImageToCloudinary(originalAvatarUrl);
+
+            }
 
             try {
                 let user = await User.findOne({ googleId: id });

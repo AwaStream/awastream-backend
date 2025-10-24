@@ -53,14 +53,16 @@ const userLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req, res) => {
-        // 3. Use the ipKeyGenerator helper for unauthenticated requests
-        return req.user ? req.user._id.toString() : ipKeyGenerator(req);
+        if (req.user) {
+            return req.user._id.toString();
+        }
+        return ipKeyGenerator(req);
     },
     message: {
         message: 'You have exceeded your request quota. Please try again in 15 minutes.',
         code: 429
     },
-    store: userStore, // <-- Use the unique userStore
+    store: userStore,
 });
 
 module.exports = {
