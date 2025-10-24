@@ -1,0 +1,130 @@
+
+
+services:
+  # 1. Your Node.js API Service
+  api:
+    build: .
+    container_name: awastream-api
+    ports:
+      # Maps your host port 5001 to the container's port 5001
+      - "5001:5001"
+    volumes:
+      # Syncs your local code to the container for live-reloading
+      - ./:/app
+      - /dev/null:/app/.env
+      # Prevents your local node_modules from being copied over
+      - api-node-modules:/app/node_modules
+    restart: unless-stopped
+    depends_on:
+      # Waits for the database and cache to be healthy before starting
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # --- CRITICAL LOCAL OVERRIDES ---
+      # These values REPLACE the ones in your .env file
+      # to point to the Docker services below.
+      - MONGO_URI=mongodb://mongo:27017/awastream
+      - REDIS_URL=redis://redis:6379
+
+      # --- Server Configuration ---
+      - NODE_ENV=${NODE_ENV}
+      - PORT=${PORT}
+
+      # --- Authentication ---
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
+      - JWT_ACCESS_EXPIRY=${JWT_ACCESS_EXPIRY}
+      - JWT_REFRESH_EXPIRY=${JWT_REFRESH_EXPIRY}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - SESSION_SECRET=${SESSION_SECRET}
+
+      # --- Email (Brevo) ---
+      - BREVO_API_KEY=${BREVO_API_KEY}
+
+      # --- Email (SMTP) ---
+      - AWASTREAM_EMAIL_HOST=${AWASTREAM_EMAIL_HOST}
+      - AWASTREAM_EMAIL_PORT=${AWASTREAM_EMAIL_PORT}
+      - AWASTREAM_EMAIL_USER=${AWASTREAM_EMAIL_USER}
+      - AWASTREAM_FROM_EMAIL=${AWASTREAM_FROM_EMAIL}
+      - AWASTREAM_FROM_NAME=${AWASTREAM_FROM_NAME}
+      - AWASTREAM_EMAIL_PASS=${AWASTREAM_EMAIL_PASS}
+      
+      # --- URLs (These are correct as localhost) ---
+      - AWASTREAM_FRONTEND_HOST=${AWASTREAM_FRONTEND_HOST}
+      - AWASTREAM_FRONTEND_URL=${AWASTREAM_FRONTEND_URL}
+      - BACKEND_URL=${BACKEND_URL}
+      - CLIENT_URL=${CLIENT_URL}
+
+      # --- Google OAuth 2.0 ---
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+
+      # --- Cloudinary ---
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+
+      # --- Paystack ---
+      - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
+      - PAYSTACK_PUBLIC_KEY=${PAYSTACK_PUBLIC_KEY}
+      - PAYSTACK_WEBHOOK_SECRET=${PAYSTACK_WEBHOOK_SECRET}
+
+      # --- Stripe ---
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - ACTIVE_PAYMENT_PROVIDER=${ACTIVE_PAYMENT_PROVIDER}
+
+      # --- YouTube ---
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+
+      # --- AWS INFRASTRUCTURE ---
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_S3_REGION=${AWS_S3_REGION}
+      - AWS_S3_UPLOADS_BUCKET_NAME=${AWS_S3_UPLOADS_BUCKET_NAME}
+      - AWS_S3_PROCESSED_BUCKET_NAME=${AWS_S3_PROCESSED_BUCKET_NAME}
+      - MEDIA_CONVERT_ROLE_ARN=${MEDIA_CONVERT_ROLE_ARN}
+      - JOB_TEMPLATE_NAME=${JOB_TEMPLATE_NAME}
+
+  # 2. Your MongoDB Service
+  mongo:
+    image: mongo:latest
+    container_name: awastream-mongo
+    ports:
+      # Lets you connect to the DB from your host PC (e.g., MongoDB Compass)
+      - "27017:27017"
+    volumes:
+      # Persists your database data
+      - mongo-data:/data/db
+    command: mongod --quiet
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # 3. Your Redis Service
+  redis:
+    image: redis:latest
+    container_name: awastream-redis
+    ports:
+      # Lets you connect to Redis from your host PC
+      - "6379:6379"
+    volumes:
+      # Persists your cache data
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+# These "named volumes" store your persistent data
+volumes:
+  mongo-data:
+  redis-data:
+  api-node-modules:
