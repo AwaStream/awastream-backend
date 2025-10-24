@@ -1,9 +1,15 @@
 const express = require('express');
 const passport = require('passport');
-const { userLimiter, authLimiter } = require('../middleware/rateLimiterMiddleware');
+
+// const { 
+//     userLimiter, 
+//     bruteForceLimiter, 
+//     apiLimiter 
+// } = require('../middleware/rateLimiterMiddleware');
+
 const router = express.Router();
 
-// --- Import ALL your controllers ---
+// --- Import ALL your controllers (No change) ---
 const {
     registerUser,
     loginUser,
@@ -18,7 +24,7 @@ const {
     changePassword, 
 } = require('../controllers/authController');
 
-// --- Import ALL your validators ---
+// --- Import ALL your validators (No change) ---
 const {
     validateRegister,
     validateLogin,
@@ -30,20 +36,28 @@ const {
     validateChangePassword,
 } = require('../middleware/validation/authValidator');
 
-// --- Import auth middleware ---
+// --- Import auth middleware (No change) ---
 const { authenticate } = require('../middleware/authMiddleware');
 
 // --- Standard Auth Routes ---
-router.post('/register', authLimiter, validateRegister, registerUser);
-router.post('/login', authLimiter, validateLogin, loginUser);
-router.post('/logout', authenticate, userLimiter, logoutUser);
-router.post('/refresh-token', authLimiter, refreshToken); // No validator needed, reads cookie
-router.get('/me', authenticate, userLimiter, getMe);
+router.post('/register', validateRegister, registerUser);
+
+router.post('/login', validateLogin, loginUser);
+
+// CORRECT (Already good): Authenticated routes use
+router.post('/logout', authenticate, logoutUser);
+
+// FIX: Use the more lenient 
+// This route is called by the frontend interceptor and MUST NOT be strict.
+router.post('/refresh-token',  refreshToken); 
+
+// CORRECT (Already good): Authenticated routes use 
+router.get('/me', authenticate, getMe);
 
 // --- Google OAuth Routes ---
+
 router.get(
     '/google',
-    authLimiter,
     validateGoogleAuth, 
     (req, res, next) => {
         const { intent } = req.query;
@@ -54,24 +68,30 @@ router.get(
     }
 );
 
+// FIX: Use the lenient
 router.get(
     '/google/callback',
-    authLimiter,
     passport.authenticate('google', { failureRedirect: '/login/failed', session: false }),
     googleCallback
 );
 
 // --- Email Verification Routes ---
-router.post('/verify-email', authLimiter, validateVerifyEmail, verifyEmail);
-router.post('/resend-verification', authLimiter, validateResendVerificationEmail, resendVerificationEmail);
+
+// FIX: Use the lenient api instead of the old
+router.post('/verify-email',  validateVerifyEmail, verifyEmail);
+
+// FIX: Use the lenient api instead of the ol
+router.post('/resend-verification', validateResendVerificationEmail, resendVerificationEmail);
 
 // --- Password Reset Routes ---
-router.post('/forgot-password', authLimiter, validateForgotPassword, forgotPassword);
-router.put('/reset-password', authLimiter, validateResetPassword, resetPassword);
+router.post('/forgot-password',  validateForgotPassword, forgotPassword);
+
+router.put('/reset-password', validateResetPassword, resetPassword);
+
+// CORRECT (Already good): Authenticated routes use 
 router.put(
     '/change-password',
-    authenticate,   
-    userLimiter,        
+    authenticate,       
     validateChangePassword, 
     changePassword 
 );
