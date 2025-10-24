@@ -5,13 +5,22 @@ const User = require('../models/User');
 // Middleware to verify the JWT and attach the user to the request object.
 const authenticate = asyncHandler(async (req, res, next) => {
     let token;
+
+    if (req.cookies.accessToken) { 
+        token = req.cookies.accessToken;
+    } 
+    // 2. Fallback check for the Bearer header (less common, but good to keep)
+    else if (req.headers.authorization?.startsWith('Bearer')) {
+        token = req.headers.authorization.split(' ')[1];
+    }
+    
     const authHeader = req.headers.authorization;
 
     if (authHeader && authHeader.startsWith('Bearer')) {
         try {
             token = authHeader.split(' ')[1];
             
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
 
             const user = await User.findById(decoded.id).select('_id role status');
 

@@ -77,7 +77,7 @@ const refreshToken = asyncHandler(async (req, res) => {
 
     try {
         // 1. Verify the token to get the user ID
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
 
         const user = await User.findById(decoded.id);
 

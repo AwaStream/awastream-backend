@@ -4,29 +4,24 @@ const helmet = require('helmet');
 const cors = require('cors');
 const session = require('express-session');
 const passport = require('passport');
-const RedisStore = require('connect-redis')(session);
-// --- END FIX ---
 const cookieParser = require('cookie-parser');
 const morgan = require('morgan');
 
 // --- Load Config & Connectors ---
 const connectDB = require('./config/db');
-const { connectRedis, redisClient } = require('./config/redisClient'); 
 const { notFound } = require('./middleware/errorMiddleware');
 const logger = require('./config/logger');
+const MongoStore = require('connect-mongo');
 
-// Load environment variables
+// Load environment variabless
 dotenv.config();
 
 // Create the Start Function
 const startServer = async () => {
     try {
-    // Connect to MongoDB and Redis *first*
-    await connectRedis();
     await connectDB();
 
     // --- API Routes ---
-    const { authLimiter, apiLimiter, userLimiter } = require('./middleware/rateLimiterMiddleware');
     const authRoutes = require('./routes/authRoutes');
     const videoRoutes = require('./routes/videoRoutes');
     const creatorRoutes = require('./routes/creatorRoutes');
@@ -40,9 +35,6 @@ const startServer = async () => {
     const commentRoutes = require('./routes/commentRoutes');
     const bundleRoutes = require('./routes/bundleRoutes');
     const notificationRoutes = require('./routes/notificationRoutes');
-
-    const redisStore = new RedisStore({ client: redisClient });
-
     // Initialize Express app
     const app = express();
 
@@ -86,7 +78,9 @@ const startServer = async () => {
         secret: process.env.SESSION_SECRET,
         resave: false,
         saveUninitialized: false,
-        store: redisStore, // This will now work
+        store: MongoStore.create({ 
+        mongoUrl: process.env.MONGO_URI 
+    }),
         cookie: { 
             secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
@@ -104,18 +98,18 @@ const startServer = async () => {
     });
 
     app.use('/api/v1/auth', authRoutes);
-    app.use('/api/v1/videos', apiLimiter, videoRoutes); 
-    app.use('/api/v1/bundles', apiLimiter, bundleRoutes); 
-    app.use('/api/v1/creator', userLimiter, creatorRoutes);
-    app.use('/api/v1/payments', userLimiter, paymentRoutes);
-    app.use('/api/v1/admin', userLimiter, adminRoutes);
-    app.use('/api/v1/access', userLimiter, accessRoutes);
-    app.use('/api/v1/utils', userLimiter, utilsRoutes);
-    app.use('/api/v1/viewer', userLimiter, viewerRoutes);
-    app.use('/api/v1/creators', apiLimiter, creatorPublicRoutes);
-    app.use('/api/v1/onboarder', userLimiter, onboarderRoutes);
-    app.use('/api/v1/comments', userLimiter, commentRoutes);
-    app.use('/api/v1/notifications', userLimiter, notificationRoutes);
+    app.use('/api/v1/videos',  videoRoutes); 
+    app.use('/api/v1/bundles',  bundleRoutes); 
+    app.use('/api/v1/creator',  creatorRoutes);
+    app.use('/api/v1/payments',  paymentRoutes);
+    app.use('/api/v1/admin',  adminRoutes);
+    app.use('/api/v1/access',  accessRoutes);
+    app.use('/api/v1/utils',  utilsRoutes);
+    app.use('/api/v1/viewer',  viewerRoutes);
+    app.use('/api/v1/creators', creatorPublicRoutes);
+    app.use('/api/v1/onboarder', onboarderRoutes);
+    app.use('/api/v1/comments', commentRoutes);
+    app.use('/api/v1/notifications', notificationRoutes);
 
     // --- Health Check Route ---
     app.get('/', (req, res) => {
