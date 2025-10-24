@@ -1,16 +1,15 @@
-// config/logger.js
 const  winston = require('winston');
 
 const logger = winston.createLogger({
-  // Level from environment variable, default to 'info'
-  level: process.env.LOG_LEVEL || 'info', 
-  format: winston.format.combine(
-    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-    winston.format.errors({ stack: true }), // Capture stack traces
-    winston.format.json() // Use JSON for structured, easy-to-parse logs
-  ),
+  level: process.env.LOG_LEVEL || 'info', 
+  format: winston.format.combine(
+    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  
+    winston.format.errors({ stack: process.env.NODE_ENV !== 'production' }), 
+    
+    winston.format.json() 
+  ),
   transports: [
-    // Output all logs to the console in a simple format
     new winston.transports.Console({
       format: winston.format.combine(
         winston.format.colorize(),

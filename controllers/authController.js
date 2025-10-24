@@ -36,50 +36,54 @@ const sendTokenResponse = (user, statusCode, res) => {
     }
 
     res.status(statusCode).json({
-        _id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        userName: user.userName,
-        email: user.email,
-        role: user.role,
-        avatarUrl: user.avatarUrl,
         token: accessToken,
         redirectPath: redirectPath,
+        user: {
+            firstName: user.firstName,
+            avatarUrl: user.avatarUrl
+        }
     });
 };
 
+
 const refreshToken = asyncHandler(async (req, res) => {
-    const token = req.cookies.refreshToken;
+    const token = req.cookies.refreshToken;
 
-    if (!token) {
-        res.status(401);
-        throw new Error('Not authorized, no refresh token provided.');
-    }
+    if (!token) {
+        res.status(401);
+        throw new Error('Not authorized, no refresh token provided.');
+    }
 
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.id);
+    try {
+        // 1. Verify the token to get the user ID
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-        if (!user) {
-            res.status(401);
-            throw new Error('Not authorized, user not found for this token.');
-        }
+        const user = await User.findById(decoded.id);
 
-        const { accessToken } = generateTokens(user._id, user.role);
-        res.json({ token: accessToken });
+        // 4. Check if user exists or is active/not suspended
+        if (!user || user.status !== 'active') {
+            res.status(401);
+            throw new Error('User not found or account is inactive.');
+        }
 
-    } catch (error) {
-        res.cookie('refreshToken', '', {
-            httpOnly: true,
-            expires: new Date(0),
-            path: '/',
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        });
-        
-        res.status(401);
-        throw new Error('Not authorized, refresh token is invalid or has expired.');
-    }
+        // 5. Generate the new access token using the FRESH role from the database
+        const { accessToken } = generateTokens(user._id, user.role); 
+        res.json({ token: accessToken });
+
+    } catch (error) {
+
+        res.cookie('refreshToken', '', {
+            httpOnly: true,
+            expires: new Date(0),
+            path: '/',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        });
+        
+        res.status(401);
+        // Use a generic error message to avoid leaking info
+        throw new Error('Not authorized, token failed or user session is invalid.');
+    }
 });
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -91,7 +95,7 @@ const registerUser = asyncHandler(async (req, res) => {
     }
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
-    let userRole = (intent === 'viewer') ? 'viewer' : 'creator';
+    let userRole = (intent === 'creator') ? 'creator' : 'viewer';
     const user = await User.create({
         firstName,
         lastName,
@@ -160,27 +164,44 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 const googleCallback = asyncHandler(async (req, res) => {
-    const user = req.user;
-    const { accessToken, refreshToken } = generateTokens(user._id, user.role);
- 
-    const cookieOptions = {
-        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        httpOnly: true,
-        path: '/',
-    };
- 
-     if (process.env.NODE_ENV === 'production') {
-        cookieOptions.secure = true;
-        cookieOptions.sameSite = 'none';
-    } else {
-        cookieOptions.sameSite = 'lax';
-    }
+    const user = req.user;
+    const { accessToken, refreshToken } = generateTokens(user._id, user.role);
 
-    res.cookie('refreshToken', refreshToken, cookieOptions);
-    
-    const frontendUrl = process.env.AWASTREAM_FRONTEND_URL;
- 
-    res.redirect(`${frontendUrl}/auth/callback?token=${accessToken}`);
+    // --- Recommendation Implemented ---
+
+    // 1. Options for the long-lived REFRESH token (7 days)
+    const refreshTokenCookieOptions = {
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        httpOnly: true,
+        path: '/',
+    };
+ 
+    // 2. Options for the short-lived ACCESS token
+    const accessTokenCookieOptions = {
+        expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+        httpOnly: true,
+        path: '/',
+    };
+
+    // 3. Apply production security settings to BOTH cookies
+    if (process.env.NODE_ENV === 'production') {
+        refreshTokenCookieOptions.secure = true;
+        refreshTokenCookieOptions.sameSite = 'none';
+        
+        accessTokenCookieOptions.secure = true;
+        accessTokenCookieOptions.sameSite = 'none';
+    } else {
+        refreshTokenCookieOptions.sameSite = 'lax';
+        accessTokenCookieOptions.sameSite = 'lax';
+    }
+
+    // 4. Set both cookies
+    res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions);
+    res.cookie('accessToken', accessToken, accessTokenCookieOptions);
+    
+    // 5. Redirect securely without any tokens in the URL
+    const frontendUrl = process.env.AWASTREAM_FRONTEND_URL;
+    res.redirect(`${frontendUrl}/auth/callback`);
 });
 
 const verifyEmail = asyncHandler(async (req, res) => {

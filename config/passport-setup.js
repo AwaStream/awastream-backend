@@ -28,12 +28,20 @@ passport.use(
                 if (existingEmailUser) {
                     return done(new Error(`An account with ${email} already exists. Please use your original sign-in method.`), null);
                 }
+                // Add a strict whitelist for the role assignment
+                const allowedIntents = ['creator', 'viewer'];
+                const userIntent = req.session.intent;
+
+                // Use 'viewer' as the strict default if the intent is missing or invalid
+                let newRole = 'viewer';
+                if (allowedIntents.includes(userIntent)) {
+                    newRole = userIntent;
+                }
                 
+
                 const firstName = name.givenName || 'User';
                 const lastName = name.familyName || ''; 
                 const userName = email.split('@')[0] + Math.floor(Math.random() * 1000);
-                
-                const intent = req.session.intent;
 
                 const newUser = await User.create({
                     googleId: id,
@@ -45,7 +53,7 @@ passport.use(
                     authMethod: 'google',
                     isEmailVerified: true,
                     lastLogin: new Date(),
-                    role: intent === 'viewer' ? 'viewer' : 'creator',
+                    role: newRole,
                 });
 
                 return done(null, newUser);

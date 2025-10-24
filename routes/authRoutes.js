@@ -37,7 +37,7 @@ const { authenticate } = require('../middleware/authMiddleware');
 router.post('/register', authLimiter, validateRegister, registerUser);
 router.post('/login', authLimiter, validateLogin, loginUser);
 router.post('/logout', authenticate, userLimiter, logoutUser);
-router.post('/refresh-token', refreshToken); // No validator needed, reads cookie
+router.post('/refresh-token', authLimiter, refreshToken); // No validator needed, reads cookie
 router.get('/me', authenticate, userLimiter, getMe);
 
 // --- Google OAuth Routes ---
