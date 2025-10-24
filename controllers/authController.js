@@ -6,60 +6,64 @@ const User = require('../models/User');
 const generateTokens = require('../utils/generateTokens');
 const { sendEmail } = require('../services/emailService');
 
-
+// --- Updated sendTokenResponse function (Performs Redirect) ---
 const sendTokenResponse = (user, statusCode, res) => {
-    const { accessToken, refreshToken } = generateTokens(user._id, user.role);
+    const { accessToken, refreshToken } = generateTokens(user._id, user.role);
 
-    // REFRESH Token Options (HTTP-ONLY)
-    const refreshTokenCookieOptions = {
-        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-        httpOnly: true, // KEEP: HTTP-Only
-        path: '/',
-    };
+    // REFRESH Token Options (HTTP-ONLY)
+    const refreshTokenCookieOptions = {
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        httpOnly: true, 
+        path: '/',
+    };
     
     // ACCESS Token Options (NON-HTTP-ONLY)
     const accessTokenCookieOptions = {
         expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
-        // FIX: MUST BE NON-HTTP-ONLY
         path: '/',
     };
 
-    if (process.env.NODE_ENV === 'production') {
-        refreshTokenCookieOptions.secure = true;
-        refreshTokenCookieOptions.sameSite = 'none';
-        // FIX: Also apply secure/sameSite to Access Token
+    if (process.env.NODE_ENV === 'production') {
+        refreshTokenCookieOptions.secure = true;
+        refreshTokenCookieOptions.sameSite = 'none';
         accessTokenCookieOptions.secure = true;
         accessTokenCookieOptions.sameSite = 'none';
-        
-        // You only need to set the domain if the backend and frontend are on different subdomains
-        // e.g., api.awastream.com and app.awastream.com. If they are, apply domain here.
-        // cookieOptions.domain = '.awastream.com'; 
-    } else {
-        refreshTokenCookieOptions.sameSite = 'lax';
+    } else {
+        refreshTokenCookieOptions.sameSite = 'lax';
         accessTokenCookieOptions.sameSite = 'lax';
-    }
+    }
 
-    res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions);
-    // FIX: Set the Access Token as a non-httpOnly cookie
+    res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions);
     res.cookie('accessToken', accessToken, accessTokenCookieOptions);
 
 
-    let redirectPath;
-     switch (user.role) {
+    let redirectPath;
+    switch (user.role) {
         case 'superadmin': redirectPath = '/admin/dashboard'; break;
         case 'creator': redirectPath = '/dashboard'; break;
         case 'viewer': redirectPath = '/library'; break;
         default: redirectPath = '/';
     }
 
-    res.status(statusCode).json({
+    // *** CRITICAL CHANGE: Redirect the user instead of sending JSON ***
+    // This solves the hanging issue after OAuth.
+    // NOTE: This only redirects if res.redirect is possible (i.e., not an AJAX call).
+    if (statusCode === 302 || statusCode === 200) { // Assume 302 or 200 status for redirect actions
+        // Get the base frontend URL from environment variables
+        const frontendUrl = process.env.AWASTREAM_FRONTEND_URL || process.env.AWASTREAM_FRONTEND_HOST || 'http://localhost:5173';
+        
+        // Use res.redirect for a cleaner OAuth hand-off.
+        return res.redirect(`${frontendUrl}${redirectPath}`);
+    }
     
-        redirectPath: redirectPath,
-        user: {
-            firstName: user.firstName,
-            avatarUrl: user.avatarUrl
-        }
-    });
+    // Fallback response for non-redirect scenarios (like AJAX login)
+    res.status(statusCode).json({
+        redirectPath: redirectPath,
+        user: {
+            firstName: user.firstName,
+            avatarUrl: user.avatarUrl
+        }
+    });
 };
 
 
@@ -181,43 +185,7 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 const googleCallback = asyncHandler(async (req, res) => {
-    const user = req.user;
-    const { accessToken, refreshToken } = generateTokens(user._id, user.role);
-
-    // --- Recommendation Implemented ---
-
-    // 1. Options for the long-lived REFRESH token (7 days)
-    const refreshTokenCookieOptions = {
-        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-        httpOnly: true,
-        path: '/',
-    };
- 
-    // 2. Options for the short-lived ACCESS token
-    const accessTokenCookieOptions = {
-        expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
-        path: '/',
-    };
-
-    // 3. Apply production security settings to BOTH cookies
-    if (process.env.NODE_ENV === 'production') {
-        refreshTokenCookieOptions.secure = true;
-        refreshTokenCookieOptions.sameSite = 'none';
-        
-        accessTokenCookieOptions.secure = true;
-        accessTokenCookieOptions.sameSite = 'none';
-    } else {
-        refreshTokenCookieOptions.sameSite = 'lax';
-        accessTokenCookieOptions.sameSite = 'lax';
-    }
-
-    // 4. Set both cookies
-    res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions);
-    res.cookie('accessToken', accessToken, accessTokenCookieOptions);
-    
-    // 5. Redirect securely without any tokens in the URL
-    const frontendUrl = process.env.AWASTREAM_FRONTEND_URL;
-    res.redirect(`${frontendUrl}/auth/callback`);
+    sendTokenResponse(req.user, 302, res);
 });
 
 const verifyEmail = asyncHandler(async (req, res) => {
