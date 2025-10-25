@@ -13,17 +13,21 @@ const { sendEmail } = require('../services/emailService');
 const sendTokenResponse = (user, statusCode, res) => {
     const { accessToken, refreshToken } = generateTokens(user._id, user.role);
 
+const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
     // REFRESH Token Options (HTTP-ONLY)
     const refreshTokenCookieOptions = {
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
         httpOnly: true, 
         path: '/',
+        domain: cookieDomain
+
     };
     
     // ACCESS Token Options (NON-HTTP-ONLY)
     const accessTokenCookieOptions = {
         expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
         path: '/',
+        domain: cookieDomain,
     };
 
     if (process.env.NODE_ENV === 'production') {
@@ -100,14 +104,34 @@ const refreshToken = asyncHandler(async (req, res) => {
 
         // 5. Generate the new access token using the FRESH role from the database
         const { accessToken } = generateTokens(user._id, user.role); 
-        res.json({ token: accessToken });
+
+        const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
+
+        const accessTokenCookieOptions = {
+            expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+            path: '/',
+            domain: cookieDomain, // <-- Include Domain
+        };
+
+        if (process.env.NODE_ENV === 'production') {
+            accessTokenCookieOptions.secure = true;
+            accessTokenCookieOptions.sameSite = 'none';
+        } else {
+            accessTokenCookieOptions.sameSite = 'lax';
+        }
+
+        res.cookie('accessToken', accessToken, accessTokenCookieOptions);
+
+        res.status(200).json({ message: 'Token refreshed'});
 
     } catch (error) {
 
+        const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
         res.cookie('refreshToken', '', {
             httpOnly: true,
             expires: new Date(0),
             path: '/',
+            domain: process.env.AWASTREAM_ROOT_DOMAIN || undefined,
             secure: process.env.NODE_ENV === 'production',
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         });
@@ -328,26 +352,26 @@ const changePassword = asyncHandler(async (req, res) => {
 });
 
 
-// In authController.js:
-
 const logoutUser = asyncHandler(async (req, res) => {
+    const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
     
-    // 1. Clear REFRESH token (HTTP-only)
-    res.cookie('refreshToken', '', {
+    const cookieOptions = {
         httpOnly: true,
-        expires: new Date(0), // Set to epoch time
+        expires: new Date(0),
         path: '/',
+        domain: cookieDomain, 
         secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    });
+    };
 
-    // 2. Clear ACCESS token (Non-HTTP-only, often accessible to JS)
-    res.cookie('accessToken', '', {
-        expires: new Date(0), // Set to epoch time
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    });
+    res.cookie('refreshToken', '', cookieOptions);
+
+
+    const accessTokenCookieOptions = {
+        ...cookieOptions,
+        httpOnly: false,};
+
+    res.cookie('accessToken', '', accessTokenCookieOptions);
     
     // 3. CRITICAL: Destroy the server-side session (clears connect.id cookie)
     // This depends on your session setup (e.g., express-session)
