@@ -1,3 +1,6 @@
+
+
+
 const asyncHandler = require('express-async-handler');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -8,64 +11,72 @@ const { sendEmail } = require('../services/emailService');
 
 // --- Updated sendTokenResponse function (Performs Redirect) ---
 const sendTokenResponse = (user, statusCode, res) => {
-    const { accessToken, refreshToken } = generateTokens(user._id, user.role);
+    const { accessToken, refreshToken } = generateTokens(user._id, user.role);
 
-    // REFRESH Token Options (HTTP-ONLY)
-    const refreshTokenCookieOptions = {
-        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-        httpOnly: true, 
-        path: '/',
-    };
-    
-    // ACCESS Token Options (NON-HTTP-ONLY)
-    const accessTokenCookieOptions = {
-        expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
-        path: '/',
-    };
+    // REFRESH Token Options (HTTP-ONLY)
+    const refreshTokenCookieOptions = {
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        httpOnly: true, 
+        path: '/',
+    };
+    
+    // ACCESS Token Options (NON-HTTP-ONLY)
+    const accessTokenCookieOptions = {
+        expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+        path: '/',
+    };
 
-    if (process.env.NODE_ENV === 'production') {
-        refreshTokenCookieOptions.secure = true;
-        refreshTokenCookieOptions.sameSite = 'none';
-        accessTokenCookieOptions.secure = true;
-        accessTokenCookieOptions.sameSite = 'none';
-    } else {
-        refreshTokenCookieOptions.sameSite = 'lax';
-        accessTokenCookieOptions.sameSite = 'lax';
-    }
+    if (process.env.NODE_ENV === 'production') {
+        refreshTokenCookieOptions.secure = true;
+        refreshTokenCookieOptions.sameSite = 'none';
+        accessTokenCookieOptions.secure = true;
+        accessTokenCookieOptions.sameSite = 'none';
+    } else {
+        refreshTokenCookieOptions.sameSite = 'lax';
+        accessTokenCookieOptions.sameSite = 'lax';
+    }
 
-    res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions);
-    res.cookie('accessToken', accessToken, accessTokenCookieOptions);
+    res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions);
+    res.cookie('accessToken', accessToken, accessTokenCookieOptions);
 
 
-    let redirectPath;
-    switch (user.role) {
-        case 'superadmin': redirectPath = '/admin/dashboard'; break;
-        case 'creator': redirectPath = '/dashboard'; break;
-        case 'viewer': redirectPath = '/library'; break;
-        default: redirectPath = '/';
-    }
+    let redirectPath;
+   // Role-based Path Determination
+    switch (user.role) {
+        case 'superadmin': 
+            redirectPath = '/admin/dashboard'; 
+            break;
+        case 'onboarder': 
+            redirectPath = '/onboarder/dashboard'; 
+            break;
+        case 'creator': 
+            redirectPath = '/dashboard'; 
+            break;
+        case 'viewer': 
+            redirectPath = '/library'; 
+            break;
+        default: 
+            redirectPath = '/';
+    }
 
-    // *** CRITICAL CHANGE: Redirect the user instead of sending JSON ***
-    // This solves the hanging issue after OAuth.
-    // NOTE: This only redirects if res.redirect is possible (i.e., not an AJAX call).
-    if (statusCode === 302 || statusCode === 200) { // Assume 302 or 200 status for redirect actions
-        // Get the base frontend URL from environment variables
-        const frontendUrl = process.env.AWASTREAM_FRONTEND_URL || process.env.AWASTREAM_FRONTEND_HOST || 'http://localhost:5173';
-        
-        // Use res.redirect for a cleaner OAuth hand-off.
-        return res.redirect(`${frontendUrl}${redirectPath}`);
-    }
-    
-    // Fallback response for non-redirect scenarios (like AJAX login)
-    res.status(statusCode).json({
-        redirectPath: redirectPath,
-        user: {
-            firstName: user.firstName,
-            avatarUrl: user.avatarUrl
-        }
-    });
+    // FIX: Only perform HTTP Redirect (302) for OAuth Hand-off. 
+    // Do NOT redirect for AJAX calls (like verifyEmail which returns 200).
+    if (statusCode === 302) { 
+        const frontendUrl = process.env.AWASTREAM_FRONTEND_URL || process.env.AWASTREAM_FRONTEND_HOST || 'http://localhost:5173';
+        
+        // Use res.redirect for a cleaner OAuth hand-off.
+        return res.redirect(`${frontendUrl}${redirectPath}`);
+    }
+    
+    // Fallback response for all non-redirect scenarios (AJAX calls: login, verifyEmail, resetPassword)
+    res.status(statusCode).json({
+        redirectPath: redirectPath,
+        user: {
+            firstName: user.firstName,
+            avatarUrl: user.avatarUrl
+        }
+    });
 };
-
 
 const refreshToken = asyncHandler(async (req, res) => {
     const token = req.cookies.refreshToken;
@@ -317,17 +328,41 @@ const changePassword = asyncHandler(async (req, res) => {
 });
 
 
+// In authController.js:
+
 const logoutUser = asyncHandler(async (req, res) => {
+    
+    // 1. Clear REFRESH token (HTTP-only)
     res.cookie('refreshToken', '', {
         httpOnly: true,
-        expires: new Date(0),
+        expires: new Date(0), // Set to epoch time
         path: '/',
         secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     });
 
+    // 2. Clear ACCESS token (Non-HTTP-only, often accessible to JS)
+    res.cookie('accessToken', '', {
+        expires: new Date(0), // Set to epoch time
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    });
+    
+    // 3. CRITICAL: Destroy the server-side session (clears connect.id cookie)
+    // This depends on your session setup (e.g., express-session)
+    if (req.session) {
+        req.session.destroy(err => {
+            if (err) {
+                console.error("Session destruction failed:", err);
+                // Continue with response even on minor session failure
+            }
+        });
+    }
+
     res.status(200).json({ message: 'Logout successful' });
 });
+
 
 const getMe = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user.id);
@@ -360,3 +395,5 @@ module.exports = {
     resetPassword,
     changePassword,
 };
+
+
