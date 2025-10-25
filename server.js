@@ -46,11 +46,12 @@ const startServer = async () => {
     app.use(morgan('combined', { stream: { write: (message) => logger.info(message.trim()) } }));
 
     const allowedOrigins = [
-        'http://localhost:5173',
-        'https://awastream.onrender.com',
-        'https://awastream.com',
-        process.env.FRONTEND_URL
-    ];
+    'http://localhost:5173',
+    'https://awastream.onrender.com',
+    'https://awastream.com',
+    'https://www.awastream.com', // <-- ADD THIS
+    process.env.FRONTEND_URL
+];
 
     const corsOptions = {
         origin: (origin, callback) => {
