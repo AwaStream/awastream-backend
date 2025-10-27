@@ -36,13 +36,14 @@ const {
     validateChangePassword,
 } = require('../middleware/validation/authValidator');
 
+const {authLimiter} = require('../middleware/rateLimiters')
 // --- Import auth middleware (No change) ---
 const { authenticate } = require('../middleware/authMiddleware');
 
 // --- Standard Auth Routes ---
-router.post('/register', validateRegister, registerUser);
+router.post('/register', validateRegister, authLimiter, registerUser);
 
-router.post('/login', validateLogin, loginUser);
+router.post('/login', validateLogin, authLimiter, loginUser);
 
 // CORRECT (Already good): Authenticated routes use
 router.post('/logout', authenticate, logoutUser);
@@ -81,10 +82,10 @@ router.get(
 router.post('/verify-email',  validateVerifyEmail, verifyEmail);
 
 // FIX: Use the lenient api instead of the ol
-router.post('/resend-verification', validateResendVerificationEmail, resendVerificationEmail);
+router.post('/resend-verification', validateResendVerificationEmail, authLimiter, resendVerificationEmail);
 
 // --- Password Reset Routes ---
-router.post('/forgot-password',  validateForgotPassword, forgotPassword);
+router.post('/forgot-password',  validateForgotPassword, authLimiter, forgotPassword);
 
 router.put('/reset-password', validateResetPassword, resetPassword);
 
