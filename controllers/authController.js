@@ -1,6 +1,3 @@
-
-
-
 const asyncHandler = require('express-async-handler');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -25,7 +22,8 @@ const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
     
     // ACCESS Token Options (NON-HTTP-ONLY)
     const accessTokenCookieOptions = {
-        expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+        expires: new Date(Date.now() + 15 * 60 * 1000),
+        httpOnly: true,
         path: '/',
         domain: cookieDomain,
     };
@@ -63,8 +61,6 @@ const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
             redirectPath = '/';
     }
 
-    // FIX: Only perform HTTP Redirect (302) for OAuth Hand-off. 
-    // Do NOT redirect for AJAX calls (like verifyEmail which returns 200).
     if (statusCode === 302) { 
         const frontendUrl = process.env.AWASTREAM_FRONTEND_URL || process.env.AWASTREAM_FRONTEND_HOST || 'http://localhost:5173';
         
