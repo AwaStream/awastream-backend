@@ -151,7 +151,7 @@ const refreshToken = asyncHandler(async (req, res) => {
         
         res.cookie('accessToken', '', { 
             ...cookieOptions, 
-            httpOnly: false 
+            httpOnly: true 
         });
         
         res.status(401);
