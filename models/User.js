@@ -15,7 +15,7 @@ const UserSchema = new mongoose.Schema({
     twitterUrl: { type: String },
     youtubeUrl: {type: String},
     googleId: { type: String, unique: true, sparse: true },
-    role: { type: String, enum: ['creator', 'viewer', 'superadmin', 'onboarder'], default: 'creator' },
+    role: { type: String, enum: ['creator', 'viewer', 'superadmin', 'onboarder'], default: 'viewer' },
     referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     payoutBankName: { type: String, trim: true },
     payoutAccountNumber: { type: String, trim: true },
@@ -48,7 +48,8 @@ UserSchema.methods.generateEmailVerificationToken = function() {
         .update(verificationToken)
         .digest('hex');
 
-    this.emailVerificationTokenExpires = Date.now() + 30 * 60 * 1000; // 30 minutes
+    // 🚨 FIX 2A: Extend expiry to 24 hours (24 * 60 * 60 * 1000)
+    this.emailVerificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
 
     return verificationToken;
 };
@@ -67,8 +68,8 @@ UserSchema.methods.generatePasswordResetToken = function() {
         .update(resetToken)
         .digest('hex');
     
-    this.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
-
+    this.resetPasswordExpires = Date.now() + 60 * 60 * 1000;
+    
     return resetToken;
 };
 

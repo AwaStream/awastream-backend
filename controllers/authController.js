@@ -99,43 +99,64 @@ const refreshToken = asyncHandler(async (req, res) => {
         }
 
         // 5. Generate the new access token using the FRESH role from the database
-        const { accessToken } = generateTokens(user._id, user.role); 
+        const { accessToken, refreshToken: newRefreshToken } = generateTokens(user._id, user.role); 
 
         const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
 
         const accessTokenCookieOptions = {
             expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+            httpOnly: true,
             path: '/',
-            domain: cookieDomain, // <-- Include Domain
+            domain: cookieDomain, 
         };
 
-        if (process.env.NODE_ENV === 'production') {
+        // --- REFRESH Token Options (Used for RTOR) ---
+        const refreshTokenCookieOptions = {
+            expires: new new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days (Match sendTokenResponse)
+            httpOnly: true,
+            path: '/',
+            domain: cookieDomain
+        };
+
+       if (process.env.NODE_ENV === 'production') {
             accessTokenCookieOptions.secure = true;
             accessTokenCookieOptions.sameSite = 'none';
+            refreshTokenCookieOptions.secure = true; // Set secure flags for the new refresh token
+            refreshTokenCookieOptions.sameSite = 'none';
         } else {
             accessTokenCookieOptions.sameSite = 'lax';
+            refreshTokenCookieOptions.sameSite = 'lax';
         }
 
+        res.cookie('refreshToken', newRefreshToken, refreshTokenCookieOptions);
+        
         res.cookie('accessToken', accessToken, accessTokenCookieOptions);
 
         res.status(200).json({ message: 'Token refreshed'});
 
-    } catch (error) {
+        } catch (error) {
 
         const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
-        res.cookie('refreshToken', '', {
-            httpOnly: true,
-            expires: new Date(0),
-            path: '/',
-            domain: process.env.AWASTREAM_ROOT_DOMAIN || undefined,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        });
+
+        const cookieOptions = {
+            httpOnly: true,
+            expires: new Date(0),
+            path: '/',
+            domain: cookieDomain,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        };
         
-        res.status(401);
-        // Use a generic error message to avoid leaking info
-        throw new Error('Not authorized, token failed or user session is invalid.');
-    }
+        res.cookie('refreshToken', '', cookieOptions);
+        
+        res.cookie('accessToken', '', { 
+            ...cookieOptions, 
+            httpOnly: false 
+        });
+        
+        res.status(401);
+        throw new Error('Not authorized, token failed or user session is invalid.');
+    }
 });
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -144,6 +165,11 @@ const registerUser = asyncHandler(async (req, res) => {
     if (userExists) {
         res.status(400);
         throw new Error('User with this email already exists.');
+    }
+    const userNameExists = await User.findOne({ userName });
+    if (userNameExists) {
+        res.status(400);
+        throw new Error(`The username "${userName}" is already taken. Please choose another.`);
     }
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
