@@ -1,0 +1,347 @@
+{
+	"info": {
+		"_postman_id": "a9f5d3a0-f8d8-4bcf-8b9a-4e2a6a111b1c",
+		"name": "AwaStream Auth",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Register New User",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"firstName\": \"Test\",\n    \"lastName\": \"User\",\n    \"userName\": \"{{test_username}}\",\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\",\n    \"intent\": \"creator\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/register",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"register"
+					]
+				},
+				"description": "Creates a new user account. Change the `test_email` and `test_username` in variables for new tests."
+			},
+			"response": []
+		},
+		{
+			"name": "Login",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"login"
+					]
+				},
+				"description": "Logs in the user and, crucially, receives the `accessToken` and `refreshToken` cookies. Postman will automatically save these."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Me (Should Work)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/auth/me",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"me"
+					]
+				},
+				"description": "This request relies on the cookies received from the `/login` request. If it works, your `authenticate` middleware is working correctly."
+			},
+			"response": []
+		},
+		{
+			"name": "Change Password (Should Work)",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"currentPassword\": \"{{test_password}}\",\n    \"newPassword\": \"NewSecurePassword123!\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/change-password",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"change-password"
+					]
+				},
+				"description": "Relies on the auth cookies from Login. Don't forget to update your `test_password` variable if you run this."
+			},
+			"response": []
+		},
+		{
+			"name": "Refresh Token (Should Work)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/auth/refresh-token",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"refresh-token"
+					]
+				},
+				"description": "This relies on the `refreshToken` cookie from Login. It will return a 200 and set a new pair of cookies."
+			},
+			"response": []
+		},
+		{
+			"name": "Logout",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/auth/logout",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"logout"
+					]
+				},
+				"description": "This sends the auth cookies to the server, which then sends back `Set-Cookie` headers to clear them. Postman will clear them from its cookie jar."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Me (Should Fail)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/auth/me",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"me"
+					]
+				},
+				"description": "Run this after `/logout`. You should get a `401 Unauthorized`. This confirms your logout fix (Attack Vector #3) is working."
+			},
+			"response": []
+		},
+		{
+			"name": "Account Recovery",
+			"item": [
+				{
+					"name": "Forgot Password (Test Enum Fix)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"non-existent-user@test.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/forgot-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"forgot-password"
+							]
+						},
+						"description": "This should return a 200 OK, *not* a 404. This tests your fix for Attack Vector #2."
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password (Real User)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{test_email}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/forgot-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"forgot-password"
+							]
+						},
+						"description": "This will also return 200 OK. Check your email for the reset token."
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"password\": \"{{test_password}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/reset-password?token={{password_token}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"reset-password"
+							],
+							"query": [
+								{
+									"key": "token",
+									"value": "{{password_token}}"
+								}
+							]
+						},
+						"description": "Get the token from your email, paste it into the `password_token` variable, and run this."
+					},
+					"response": []
+				},
+				{
+					"name": "Resend Verification (Test Enum Fix)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"non-existent-user@test.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/resend-verification",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"resend-verification"
+							]
+						},
+						"description": "This should also return 200 OK, not 404, testing Attack Vector #2."
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Email",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"token\": \"{{email_token}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/verify-email",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"verify-email"
+							]
+						},
+						"description": "Get the token from your registration email, paste it into the `email_token` variable, and run this."
+					},
+					"response": []
+				}
+			],
+			"protocolProfileBehavior": {}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5001/api/v1"
+		},
+		{
+			"key": "test_email",
+			"value": "your-test-email+1@gmail.com"
+		},
+		{
+			"key": "test_password",
+			"value": "SecurePassword123!"
+		},
+		{
+			"key": "test_username",
+			"value": "testuser123"
+		},
+		{
+			"key": "email_token",
+			"value": "PASTE_TOKEN_FROM_EMAIL_HERE"
+		},
+		{
+			"key": "password_token",
+			"value": "PASTE_TOKEN_FROM_EMAIL_HERE"
+		}
+	]
+}

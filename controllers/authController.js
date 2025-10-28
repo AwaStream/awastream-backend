@@ -308,20 +308,57 @@ const verifyEmail = asyncHandler(async (req, res) => {
     sendTokenResponse(user, 200, res);
 });
 
+// const resendVerificationEmail = asyncHandler(async (req, res) => {
+//     const { email } = req.body;
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//         res.status(404);
+//         throw new Error('User with that email does not exist.');
+//     }
+//     if (user.isEmailVerified) {
+//         res.status(400);
+//         throw new Error('This account has already been verified.');
+//     }
+//     const verificationToken = user.generateEmailVerificationToken();
+//     await user.save();
+//     const verificationUrl = `${process.env.AWASTREAM_FRONTEND_HOST}/verify-email?token=${verificationToken}`;
+//     try {
+//         await sendEmail({
+//             subject: 'Resend: Verify Your AwaStream Account',
+//             send_to: user.email,
+//             sent_from: `${process.env.AWASTREAM_FROM_NAME || 'AwaStream Team'} <${process.env.AWASTREAM_FROM_EMAIL || 'no-reply@awastream.com'}>`,
+//             reply_to: process.env.AWASTREAM_FROM_EMAIL || 'no-reply@awastream.com',
+//             template: 'emailVerification',
+//             name: user.firstName,
+//             link: verificationUrl,
+//         });
+//         res.status(200).json({ message: `A new verification email has been sent to ${user.email}.` });
+//     } catch (error) {
+//         res.status(500);
+//         throw new Error('Email could not be sent. Please try again later.');
+//     }
+// });
 const resendVerificationEmail = asyncHandler(async (req, res) => {
     const { email } = req.body;
     const user = await User.findOne({ email });
+
     if (!user) {
-        res.status(404);
-        throw new Error('User with that email does not exist.');
+        return res.status(200).json({ 
+            message: `If an account with ${email} exists and is unverified, a new verification email has been sent.`
+        });
     }
+
     if (user.isEmailVerified) {
-        res.status(400);
+        res.status(400); // 400 is OK here, it's not a security leak, it's a state error.
         throw new Error('This account has already been verified.');
     }
+
+    // --- This code only runs if the user exists and is not verified ---
     const verificationToken = user.generateEmailVerificationToken();
     await user.save();
+    
     const verificationUrl = `${process.env.AWASTREAM_FRONTEND_HOST}/verify-email?token=${verificationToken}`;
+    
     try {
         await sendEmail({
             subject: 'Resend: Verify Your AwaStream Account',
@@ -332,13 +369,16 @@ const resendVerificationEmail = asyncHandler(async (req, res) => {
             name: user.firstName,
             link: verificationUrl,
         });
-        res.status(200).json({ message: `A new verification email has been sent to ${user.email}.` });
+
+        res.status(200).json({ 
+            message: `If an account with ${email} exists and is unverified, a new verification email has been sent.` 
+        });
+
     } catch (error) {
         res.status(500);
         throw new Error('Email could not be sent. Please try again later.');
     }
 });
-
 // const forgotPassword = asyncHandler(async (req, res) => {
 //     const { email } = req.body;
 //     const user = await User.findOne({ email });
@@ -460,42 +500,75 @@ const changePassword = asyncHandler(async (req, res) => {
 
     res.status(200).json({ message: 'Password changed successfully.' });
 });
-
-
 const logoutUser = asyncHandler(async (req, res) => {
     const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
     
+    // Base cookie options for clearing
     const cookieOptions = {
-        httpOnly: true,
-        expires: new Date(0),
+        httpOnly: true, // <-- MUST be true to match the cookie we are clearing
+        expires: new Date(0), // Set expiry to the past
         path: '/',
         domain: cookieDomain, 
         secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     };
 
+    // 1. Clear the Refresh Token
     res.cookie('refreshToken', '', cookieOptions);
 
+    // 2. 🚨 THE FIX: Clear the Access Token
+    // We use the *exact same* options, including httpOnly: true
+    res.cookie('accessToken', '', cookieOptions);
 
-    const accessTokenCookieOptions = {
-        ...cookieOptions,
-        httpOnly: false,};
-
-    res.cookie('accessToken', '', accessTokenCookieOptions);
-    
-    // 3. CRITICAL: Destroy the server-side session (clears connect.id cookie)
-    // This depends on your session setup (e.g., express-session)
+    // 3. Destroy the server-side session (if you're still using it for Google OAuth)
+    // If you've removed sessions as per my scalability advice, you can delete this part.
     if (req.session) {
         req.session.destroy(err => {
             if (err) {
+                // Log the error but don't fail the logout
                 console.error("Session destruction failed:", err);
-                // Continue with response even on minor session failure
             }
         });
     }
 
+    // 4. Send success response
     res.status(200).json({ message: 'Logout successful' });
 });
+
+// const logoutUser = asyncHandler(async (req, res) => {
+//     const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
+    
+//     const cookieOptions = {
+//         httpOnly: true,
+//         expires: new Date(0),
+//         path: '/',
+//         domain: cookieDomain, 
+//         secure: process.env.NODE_ENV === 'production',
+//         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+//     };
+
+//     res.cookie('refreshToken', '', cookieOptions);
+
+
+//     const accessTokenCookieOptions = {
+//         ...cookieOptions,
+//         httpOnly: false,};
+
+//     res.cookie('accessToken', '', accessTokenCookieOptions);
+    
+//     // 3. CRITICAL: Destroy the server-side session (clears connect.id cookie)
+//     // This depends on your session setup (e.g., express-session)
+//     if (req.session) {
+//         req.session.destroy(err => {
+//             if (err) {
+//                 console.error("Session destruction failed:", err);
+//                 // Continue with response even on minor session failure
+//             }
+//         });
+//     }
+
+//     res.status(200).json({ message: 'Logout successful' });
+// });
 
 
 const getMe = asyncHandler(async (req, res) => {
