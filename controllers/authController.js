@@ -339,16 +339,52 @@ const resendVerificationEmail = asyncHandler(async (req, res) => {
     }
 });
 
+// const forgotPassword = asyncHandler(async (req, res) => {
+//     const { email } = req.body;
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//         res.status(404);
+//         throw new Error('There is no user with that email address.');
+//     }
+//     const resetToken = user.generatePasswordResetToken();
+//     await user.save();
+//     const resetUrl = `${process.env.AWASTREAM_FRONTEND_HOST}/reset-password?token=${resetToken}`;
+//     try {
+//         await sendEmail({
+//             subject: 'AwaStream Password Reset Request',
+//             send_to: user.email,
+//             sent_from: `${process.env.AWASTREAM_FROM_NAME || 'AwaStream Team'} <${process.env.AWASTREAM_FROM_EMAIL || 'no-reply@awastream.com'}>`,
+//             reply_to: process.env.AWASTREAM_FROM_EMAIL || 'no-reply@awastream.com',
+//             template: 'passwordReset',
+//             name: user.firstName,
+//             link: resetUrl,
+//         });
+//         res.status(200).json({ message: 'Password reset link has been sent to your email.' });
+//     } catch (error) {
+//         user.resetPasswordToken = undefined;
+//         user.resetPasswordExpires = undefined;
+//         await user.save();
+//         res.status(500);
+//         throw new Error('Email could not be sent.');
+//     }
+// });
+
 const forgotPassword = asyncHandler(async (req, res) => {
     const { email } = req.body;
     const user = await User.findOne({ email });
+
     if (!user) {
-        res.status(404);
-        throw new Error('There is no user with that email address.');
+        return res.status(200).json({ 
+            message: 'If an account with that email exists, a password reset link has been sent.' 
+        });
     }
+
+    // --- This code only runs if the user *was* found ---
     const resetToken = user.generatePasswordResetToken();
     await user.save();
+    
     const resetUrl = `${process.env.AWASTREAM_FRONTEND_HOST}/reset-password?token=${resetToken}`;
+    
     try {
         await sendEmail({
             subject: 'AwaStream Password Reset Request',
@@ -359,15 +395,22 @@ const forgotPassword = asyncHandler(async (req, res) => {
             name: user.firstName,
             link: resetUrl,
         });
-        res.status(200).json({ message: 'Password reset link has been sent to your email.' });
+
+        res.status(200).json({ 
+            message: 'If an account with that email exists, a password reset link has been sent.' 
+        });
+
     } catch (error) {
         user.resetPasswordToken = undefined;
         user.resetPasswordExpires = undefined;
         await user.save();
+        
+        // We still throw a 500 if the *email service* fails, as this is a server problem.
         res.status(500);
-        throw new Error('Email could not be sent.');
+        throw new Error('Email could not be sent. Please try again later.');
     }
 });
+
 
 const resetPassword = asyncHandler(async (req, res) => {
     const { token } = req.query;
