@@ -6,6 +6,7 @@ const session = require('express-session');
 const passport = require('passport');
 const cookieParser = require('cookie-parser');
 const morgan = require('morgan');
+const { authLimiter, globalLimiter } = require('./middleware/rateLimiters');
 
 // --- Load Config & Connectors ---
 const connectDB = require('./config/db');
@@ -65,13 +66,15 @@ const startServer = async () => {
     };
     app.use(cors(corsOptions));
 
+    app.use('/api/v1/payments/webhook/stripe', express.raw({
+             type: 'application/json',
+             limit: '5mb'
+        }), paymentRoutes);
+
     app.use(express.json({
-        verify: (req, res, buf) => {
-            if (req.originalUrl.startsWith('/api/v1/payments/webhook/stripe')) {
-                req.rawBody = buf.toString();
-            }
-        }
-    }));
+            limit: '10kb', 
+        }));
+   
     app.use(cookieParser());
 
     // --- Session Store Configuration (SameSite Policy) ---
@@ -93,7 +96,8 @@ const startServer = async () => {
     app.use(passport.initialize());
     require('./config/passport-setup');
 
-
+    app.use('/api/v1', globalLimiter);
+    
     app.get('/health', (req, res) => {
       res.status(200).send('OK');
     });

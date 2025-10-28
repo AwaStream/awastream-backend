@@ -1,2 +1,4 @@
 const COMMISSION_RATE = 0.15;
-module.exports = { COMMISSION_RATE };
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCK_TIME = 20 * 60 * 1000;
+module.exports = { COMMISSION_RATE, MAX_LOGIN_ATTEMPTS, LOCK_TIME };
