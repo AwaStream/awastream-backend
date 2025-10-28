@@ -8,24 +8,25 @@ const { sendEmail } = require('../services/emailService');
 
 // --- Updated sendTokenResponse function (Performs Redirect) ---
 const sendTokenResponse = (user, statusCode, res) => {
-    const { accessToken, refreshToken } = generateTokens(user._id, user.role);
+    // Assume generateTokens and other necessary functions are defined elsewhere
+    const { accessToken, refreshToken } = generateTokens(user._id, user.role);
 
-const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
-    // REFRESH Token Options (HTTP-ONLY)
-    const refreshTokenCookieOptions = {
+    const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
+    
+    // REFRESH Token Options (HTTP-ONLY, 7 Days)
+    const refreshTokenCookieOptions = {
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
         httpOnly: true, 
         path: '/',
-        domain: cookieDomain
-
+        domain: cookieDomain
     };
-    
-    // ACCESS Token Options (NON-HTTP-ONLY)
+    
+    // ACCESS Token Options (HTTP-ONLY, 15 Minutes)
     const accessTokenCookieOptions = {
         expires: new Date(Date.now() + 15 * 60 * 1000),
-        httpOnly: true,
+        httpOnly: true, // Securely set as HTTP-only
         path: '/',
-        domain: cookieDomain,
+        domain: cookieDomain,
     };
 
     if (process.env.NODE_ENV === 'production') {
@@ -46,19 +47,19 @@ const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
    // Role-based Path Determination
     switch (user.role) {
         case 'superadmin': 
-            redirectPath = '/admin/dashboard'; 
-            break;
+            redirectPath = '/admin/dashboard'; 
+            break;
         case 'onboarder': 
-            redirectPath = '/onboarder/dashboard'; 
-            break;
+            redirectPath = '/onboarder/dashboard'; 
+            break;
         case 'creator': 
-            redirectPath = '/dashboard'; 
-            break;
+            redirectPath = '/dashboard'; 
+            break;
         case 'viewer': 
-            redirectPath = '/library'; 
-            break;
+            redirectPath = '/library'; 
+            break;
         default: 
-            redirectPath = '/';
+            redirectPath = '/';
     }
 
     if (statusCode === 302) { 
@@ -88,8 +89,10 @@ const refreshToken = asyncHandler(async (req, res) => {
 
     try {
         // 1. Verify the token to get the user ID
+        // Assume jwt.verify is defined
         const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
 
+        // Assume User is the Mongoose model
         const user = await User.findById(decoded.id);
 
         // 4. Check if user exists or is active/not suspended
@@ -101,62 +104,63 @@ const refreshToken = asyncHandler(async (req, res) => {
         // 5. Generate the new access token using the FRESH role from the database
         const { accessToken, refreshToken: newRefreshToken } = generateTokens(user._id, user.role); 
 
-        const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
+        const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
 
-        const accessTokenCookieOptions = {
-            expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
-            httpOnly: true,
-            path: '/',
-            domain: cookieDomain, 
-        };
+        const accessTokenCookieOptions = {
+            expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+            httpOnly: true,
+            path: '/',
+            domain: cookieDomain, 
+        };
 
-        // --- REFRESH Token Options (Used for RTOR) ---
-        const refreshTokenCookieOptions = {
-            expires: new new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days (Match sendTokenResponse)
-            httpOnly: true,
-            path: '/',
-            domain: cookieDomain
-        };
+        // --- REFRESH Token Options (Used for RTOR) ---
+        const refreshTokenCookieOptions = {
+            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days (Match sendTokenResponse)
+            httpOnly: true,
+            path: '/',
+            domain: cookieDomain
+        };
 
-       if (process.env.NODE_ENV === 'production') {
-            accessTokenCookieOptions.secure = true;
-            accessTokenCookieOptions.sameSite = 'none';
-            refreshTokenCookieOptions.secure = true; // Set secure flags for the new refresh token
-            refreshTokenCookieOptions.sameSite = 'none';
-        } else {
-            accessTokenCookieOptions.sameSite = 'lax';
-            refreshTokenCookieOptions.sameSite = 'lax';
-        }
+       if (process.env.NODE_ENV === 'production') {
+            accessTokenCookieOptions.secure = true;
+            accessTokenCookieOptions.sameSite = 'none';
+            refreshTokenCookieOptions.secure = true; // Set secure flags for the new refresh token
+            refreshTokenCookieOptions.sameSite = 'none';
+        } else {
+            accessTokenCookieOptions.sameSite = 'lax';
+            refreshTokenCookieOptions.sameSite = 'lax';
+        }
 
-        res.cookie('refreshToken', newRefreshToken, refreshTokenCookieOptions);
-        
-        res.cookie('accessToken', accessToken, accessTokenCookieOptions);
-
-        res.status(200).json({ message: 'Token refreshed'});
-
-        } catch (error) {
-
-        const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
-
-        const cookieOptions = {
-            httpOnly: true,
-            expires: new Date(0),
-            path: '/',
-            domain: cookieDomain,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        };
+        res.cookie('refreshToken', newRefreshToken, refreshTokenCookieOptions);
         
-        res.cookie('refreshToken', '', cookieOptions);
-        
-        res.cookie('accessToken', '', { 
-            ...cookieOptions, 
-            httpOnly: true 
-        });
-        
-        res.status(401);
-        throw new Error('Not authorized, token failed or user session is invalid.');
-    }
+        res.cookie('accessToken', accessToken, accessTokenCookieOptions);
+
+        res.status(200).json({ message: 'Token refreshed'});
+
+        } catch (error) {
+
+        const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
+
+        const cookieOptions = {
+            httpOnly: true,
+            expires: new Date(0), // Clears the cookie immediately
+            path: '/',
+            domain: cookieDomain,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        };
+        
+        // Clear all session cookies
+        res.cookie('refreshToken', '', cookieOptions);
+        
+        res.cookie('accessToken', '', { 
+            ...cookieOptions, 
+            httpOnly: true 
+        });
+        
+        res.status(401);
+        throw new Error('Not authorized, token failed or user session is invalid.');
+    }
 });
 
 const registerUser = asyncHandler(async (req, res) => {
