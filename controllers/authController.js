@@ -220,31 +220,6 @@ if (referralCode) {
     }
 });
 
-// const loginUser = asyncHandler(async (req, res) => {
-//     const { email, password } = req.body;
-//     const user = await User.findOne({ email }).select('+passwordHash +loginAttempts +');
-//     if (!user || !(await user.matchPassword(password))) {
-//         res.status(401);
-//         throw new Error('Invalid email or password');
-//     }
-//     if (!user.isEmailVerified) {
-//         return res.status(403).json({
-//             error: 'EMAIL_NOT_VERIFIED',
-//             message: 'Please verify your email address before logging in.'
-//         });
-//     }
-//     if (user.authMethod !== 'local') {
-//         res.status(401);
-//         throw new Error(`This account uses ${user.authMethod} sign-in. Please use that method to log in.`);
-//     }
-//     user.lastLogin = new Date();
-//     await user.save();
-//     sendTokenResponse(user, 200, res);
-// });
-
-// -------------------------------------
-
-
 const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 

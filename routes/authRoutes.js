@@ -89,7 +89,6 @@ router.post('/forgot-password',  validateForgotPassword, authLimiter, forgotPass
 
 router.put('/reset-password', validateResetPassword, resetPassword);
 
-// CORRECT (Already good): Authenticated routes use 
 router.put(
     '/change-password',
     authenticate,       
