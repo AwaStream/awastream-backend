@@ -10,7 +10,9 @@ const {
     getAllCreatorVideos,
     getVideoStats,
     getDailyPerformance,
-    getVideoTransactions, 
+    getVideoTransactions,
+    getPlaybackDetails, 
+    getTrailerStream,
 } = require('../controllers/videoController');
 const { authenticate } = require('../middleware/authMiddleware');
 
@@ -22,6 +24,8 @@ router.route('/')
 router.post('/generate-upload-url', authenticate, generateUploadUrl);
 router.get('/stream/:slug', streamVideo);
 
+router.get('/access/:slug', authenticate, getPlaybackDetails);
+router.get('/trailer/:slug', getTrailerStream);
 // --- Slug-based routes MUST come before the generic '/:slug' route ---
 router.get('/:slug/stats', authenticate, getVideoStats);
 router.get('/:slug/transactions', authenticate, getVideoTransactions);

@@ -6,6 +6,7 @@ const videoViewSchema = new mongoose.Schema({
         ref: 'Video',
         required: true,
     },
+    // Store a hash of the IP for privacy, not the raw IP
     viewerIp: {
         type: String,
         required: true,
