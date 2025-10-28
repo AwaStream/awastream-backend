@@ -14,6 +14,8 @@ const UserSchema = new mongoose.Schema({
     websiteUrl: { type: String },
     twitterUrl: { type: String },
     youtubeUrl: {type: String},
+    loginAttempts: { type: Number, default: 0, select: false },
+    lockUntil: { type: Date, select: false },
     googleId: { type: String, unique: true, sparse: true },
     role: { type: String, enum: ['creator', 'viewer', 'superadmin', 'onboarder'], default: 'viewer' },
     referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
@@ -77,6 +79,15 @@ UserSchema.methods.generatePasswordResetToken = function() {
 UserSchema.methods.matchPassword = async function(enteredPassword) {
     if (!this.passwordHash) return false;
     return await bcrypt.compare(enteredPassword, this.passwordHash);
+};
+
+/**
+ * Checks if the account is currently locked out.
+ * @returns {boolean} True if the lockUntil date is in the future.
+ */
+UserSchema.methods.isLocked = function() {
+    // Return true if lockUntil exists AND the lock date is in the future.
+    return !!(this.lockUntil && this.lockUntil > Date.now());
 };
 
 const User = mongoose.model('User', UserSchema);

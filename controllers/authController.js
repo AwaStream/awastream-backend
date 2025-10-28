@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
 const generateTokens = require('../utils/generateTokens');
+const { MAX_LOGIN_ATTEMPTS, LOCK_TIME } = require('../config/constants')
 const { sendEmail } = require('../services/emailService');
 
 // --- Updated sendTokenResponse function (Performs Redirect) ---
@@ -68,7 +69,7 @@ const cookieDomain = process.env.AWASTREAM_ROOT_DOMAIN || undefined;
         return res.redirect(`${frontendUrl}${redirectPath}`);
     }
     
-    // Fallback response for all non-redirect scenarios (AJAX calls: login, verifyEmail, resetPassword)
+    // Fallback response for all non-redirect scenarios 
     res.status(statusCode).json({
         redirectPath: redirectPath,
         user: {
@@ -112,7 +113,7 @@ const refreshToken = asyncHandler(async (req, res) => {
 
         // --- REFRESH Token Options (Used for RTOR) ---
         const refreshTokenCookieOptions = {
-            expires: new new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days (Match sendTokenResponse)
+            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days (Match sendTokenResponse)
             httpOnly: true,
             path: '/',
             domain: cookieDomain
@@ -219,27 +220,92 @@ if (referralCode) {
     }
 });
 
+// const loginUser = asyncHandler(async (req, res) => {
+//     const { email, password } = req.body;
+//     const user = await User.findOne({ email }).select('+passwordHash +loginAttempts +');
+//     if (!user || !(await user.matchPassword(password))) {
+//         res.status(401);
+//         throw new Error('Invalid email or password');
+//     }
+//     if (!user.isEmailVerified) {
+//         return res.status(403).json({
+//             error: 'EMAIL_NOT_VERIFIED',
+//             message: 'Please verify your email address before logging in.'
+//         });
+//     }
+//     if (user.authMethod !== 'local') {
+//         res.status(401);
+//         throw new Error(`This account uses ${user.authMethod} sign-in. Please use that method to log in.`);
+//     }
+//     user.lastLogin = new Date();
+//     await user.save();
+//     sendTokenResponse(user, 200, res);
+// });
+
+// -------------------------------------
+
+
 const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
-    const user = await User.findOne({ email }).select('+passwordHash');
-    if (!user || !(await user.matchPassword(password))) {
+
+    // 1. Find user, explicitly selecting passwordHash and the new lockout fields.
+    const user = await User.findOne({ email }).select('+passwordHash +loginAttempts +lockUntil');
+
+    if (!user) {
         res.status(401);
-        throw new Error('Invalid email or password');
+        throw new Error('Invalid email or password.');
     }
-    if (!user.isEmailVerified) {
-        return res.status(403).json({
-            error: 'EMAIL_NOT_VERIFIED',
-            message: 'Please verify your email address before logging in.'
-        });
+
+    // 2. 🚨 CRITICAL CHECK: ACCOUNT LOCKOUT
+    if (user.isLocked()) {
+        res.status(423); // 423 Locked is the correct status code
+        const minutesLeft = Math.ceil((user.lockUntil.getTime() - Date.now()) / (60 * 1000));
+        throw new Error(`Account locked due to too many failed attempts. Try again in ${minutesLeft} minutes.`);
     }
-    if (user.authMethod !== 'local') {
+
+    // 3. Check password
+    const isMatch = await user.matchPassword(password);
+
+    if (isMatch) {
+        // SUCCESS PATH: Reset lockout fields and continue
+        user.loginAttempts = 0;
+        user.lockUntil = undefined;
+        user.lastLogin = Date.now();
+        await user.save();
+        
+        // Final check for email verification status
+        if (!user.isEmailVerified) {
+             // 403 status is handled by the overall error handler; just send the specific error code
+             res.status(403);
+             res.json({ error: 'EMAIL_NOT_VERIFIED', message: 'Please verify your email to continue login.' });
+             return;
+        }
+
+        sendTokenResponse(user, 200, res);
+
+    } else {
+        // Increment attempts
+        user.loginAttempts += 1;
+        
+        // Check if lockout threshold is met
+        if (user.loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+            user.lockUntil = new Date(Date.now() + LOCK_TIME);
+            user.loginAttempts = 0; // Reset attempts after locking
+            
+            await user.save();
+            
+            res.status(423); // 423 Locked
+            throw new Error(`Too many failed login attempts. Account locked for ${LOCK_TIME / (60 * 1000)} minutes.`);
+        }
+        
+        // If not locked, just save the incremented attempt count
+        await user.save();
+
         res.status(401);
-        throw new Error(`This account uses ${user.authMethod} sign-in. Please use that method to log in.`);
+        throw new Error('Invalid email or password.'); 
     }
-    user.lastLogin = new Date();
-    await user.save();
-    sendTokenResponse(user, 200, res);
 });
+
 
 const googleCallback = asyncHandler(async (req, res) => {
     sendTokenResponse(req.user, 302, res);
