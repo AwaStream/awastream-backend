@@ -21,7 +21,7 @@ const authenticate = asyncHandler(async (req, res, next) => {
             const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
             
             // 🚨 FIX: Select 'isEmailVerified' from the database
-            const user = await User.findById(decoded.id).select('_id role status isEmailVerified'); 
+            const user = await User.findById(decoded.id).select('_id role status isEmailVerified email'); 
 
             if (!user || user.status !== 'active') {
                 res.status(401);

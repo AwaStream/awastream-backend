@@ -118,38 +118,97 @@ const createVideo = asyncHandler(async (req, res) => {
  * @route   PUT /api/videos/:slug
  * @access  Private (Creator)
  */
+// @desc    Update video details (title, price, trailer)
+// @route   PUT /api/videos/:slug
+// @access  Private (Creator)
 const updateVideo = asyncHandler(async (req, res) => {
-    const { title, description, priceNaira } = req.body;
-
-    const video = await Video.findOne({ shareableSlug: req.params.slug });
+    const { slug } = req.params;
+    const { priceNaira, title, description, trailerSourceType, trailerSourceId } = req.body;
+    
+    // 1. Find Video and Authorize
+    const video = await Video.findOne({ shareableSlug: slug });
 
     if (!video) {
         res.status(404);
-        throw new Error('Video not found');
+        throw new Error('Video not found.');
     }
-
-    // Check for ownership
-    if (video.creator.toString() !== req.user.id) {
-        res.status(401);
-        throw new Error('User not authorized to update this video');
-    }
-
-    video.title = title || video.title;
-    video.description = description || video.description;
     
-    if (priceNaira) {
-        const priceValue = parseFloat(priceNaira);
-        if (isNaN(priceValue) || priceValue <= 0) {
-            res.status(400);
-            throw new Error('Please provide a valid price.');
-        }
-        video.priceNaira = priceValue;
-        video.priceKobo = Math.round(priceValue * 100);
+    // Authorization Check: Must be the creator to edit
+    if (video.creator.toString() !== req.user._id.toString()) {
+        res.status(401);
+        throw new Error('Not authorized to update this video.');
     }
 
-    const updatedVideo = await video.save();
+    // 2. Data Validation and Pre-processing
+    let updates = { title, description };
+
+    if (priceNaira !== undefined) {
+        const priceValue = parseFloat(priceNaira);
+        // (Add your full price validation here: e.g., allow 0, check minimums)
+        updates.priceNaira = priceValue;
+        updates.priceKobo = Math.round(priceValue * 100);
+    }
+
+    // 3. Trailer Logic (Handling a NEW upload or a URL change)
+    if (trailerSourceType) {
+        updates.trailerSourceType = trailerSourceType;
+        
+        if (trailerSourceType === 'youtube') {
+            updates.trailerSourceId = trailerSourceId;
+        } else if (trailerSourceType === 'direct') {
+            // Note: Frontend must upload file first and send the S3 key
+            // This assumes the frontend sends the key in req.body.trailerSourceId 
+            // if a new file was uploaded, OR sends the old key/null if none.
+            updates.trailerSourceId = trailerSourceId || video.trailerSourceId;
+        } else {
+            // If 'none' or null, clear the source ID
+            updates.trailerSourceId = null;
+        }
+    }
+    
+    // 4. Execute Update
+    const updatedVideo = await Video.findByIdAndUpdate(video._id, updates, {
+        new: true, // Return the updated document
+        runValidators: true,
+    });
+
     res.status(200).json(updatedVideo);
 });
+
+// Don't forget to export this controller function!
+// module.exports = { /* ..., getVideoStats, updateVideo, ... */ };
+// const updateVideo = asyncHandler(async (req, res) => {
+//     const { title, description, priceNaira } = req.body;
+
+//     const video = await Video.findOne({ shareableSlug: req.params.slug });
+
+//     if (!video) {
+//         res.status(404);
+//         throw new Error('Video not found');
+//     }
+
+//     // Check for ownership
+//     if (video.creator.toString() !== req.user.id) {
+//         res.status(401);
+//         throw new Error('User not authorized to update this video');
+//     }
+
+//     video.title = title || video.title;
+//     video.description = description || video.description;
+    
+//     if (priceNaira) {
+//         const priceValue = parseFloat(priceNaira);
+//         if (isNaN(priceValue) || priceValue <= 0) {
+//             res.status(400);
+//             throw new Error('Please provide a valid price.');
+//         }
+//         video.priceNaira = priceValue;
+//         video.priceKobo = Math.round(priceValue * 100);
+//     }
+
+//     const updatedVideo = await video.save();
+//     res.status(200).json(updatedVideo);
+// });
 
 /**
  * @desc    Generate a presigned URL for direct S3 upload by calling the S3 service.
@@ -323,6 +382,8 @@ const getTrailerStream = asyncHandler(async (req, res) => {
 });
 
 
+// Assume asyncHandler, Video, VideoView, and crypto are imported at the top
+
 const getVideoBySlug = asyncHandler(async (req, res) => {
     const video = await Video.findOne({ shareableSlug: req.params.slug })
         .populate('creator', 'userName avatarUrl');
@@ -334,7 +395,7 @@ const getVideoBySlug = asyncHandler(async (req, res) => {
     
     // --- Consistent & Private View Tracking ---
     try {
-        // Hash the IP for privacy
+        // Hash the IP for privacy (Make sure 'crypto' is imported!)
         const viewerHash = crypto.createHash('sha256').update(req.ip).digest('hex');
         
         // Attempt to create a new unique view record
@@ -343,18 +404,17 @@ const getVideoBySlug = asyncHandler(async (req, res) => {
             viewerIp: viewerHash,
         });
 
-        // If create was successful,
-        // then and ONLY then do we increment the master view counter.
+        // Increment the master view counter
         await Video.updateOne({ _id: video._id }, { $inc: { totalViews: 1 } });
 
     } catch (error) {
-        // This will fail if the unique index (video + viewerIp) is violated.
-        // This is *expected* behavior for a non-unique view. We can safely ignore it.
-        if (error.code !== 11000) { // 11000 is the duplicate key error code
+        // Safely ignore duplicate key errors (non-unique views)
+        if (error.code !== 11000) { 
             console.warn("Error logging video view:", error.message);
         }
     }
     
+    // --- CORRECTED PUBLIC DATA RESPONSE ---
     const publicVideoData = {
         _id: video._id,
         title: video.title,
@@ -365,8 +425,11 @@ const getVideoBySlug = asyncHandler(async (req, res) => {
         shareableSlug: video.shareableSlug,
         creator: video.creator,
         sourceType: video.sourceType,
-        trailerSourceType: trailerSourceType || 'none',
-        trailerSourceId: trailerSourceId,
+        
+        // ✅ CORRECTED LINES: Access properties directly from the 'video' object
+        // Use '||' for backward compatibility with old videos that might have no field.
+        trailerSourceType: video.trailerSourceType || 'none', 
+        trailerSourceId: video.trailerSourceId || null,
     };
 
     return res.json(publicVideoData);
@@ -443,10 +506,10 @@ const getDailyPerformance = asyncHandler(async (req, res) => {
 const getVideoStats = asyncHandler(async (req, res) => {
     const video = await Video.findOne({ shareableSlug: req.params.slug });
 
-    if (!video || video.creator.toString() !== req.user.id) {
-        res.status(401);
-        throw new Error('Not authorized for this video');
-    }
+if (!video || video.creator.toString() !== req.user._id.toString()) {
+    res.status(401);
+    throw new Error('Not authorized for this video');
+}
     const videoId = video._id;
 
    const earningsAggregation = await Transaction.aggregate([
