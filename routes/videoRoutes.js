@@ -15,6 +15,11 @@ const {
     getTrailerStream,
 } = require('../controllers/videoController');
 const { authenticate } = require('../middleware/authMiddleware');
+const { 
+    startWatchSession, 
+    sendWatchHeartbeat, 
+    endWatchSession 
+} = require('../controllers/analyticsController');
 
 router.route('/')
     .get(authenticate, getAllCreatorVideos)
@@ -36,5 +41,15 @@ router.route('/:slug')
     .get(getVideoBySlug)
     .put(authenticate, updateVideo)
     .delete(authenticate, deleteVideo); 
+// @desc    Tells the server the user has started playing a video
+router.post('/analytics/start', authenticate, startWatchSession);
+
+// @route   POST /api/videos/analytics/heartbeat
+// @desc    Sent every 30-60s to prove the user is still watching
+router.post('/analytics/heartbeat', authenticate, sendWatchHeartbeat);
+
+// @route   POST /api/videos/analytics/end
+// @desc    Tells the server the user has stopped watching (closed tab, etc.)
+router.post('/analytics/end', authenticate, endWatchSession);
 
 module.exports = router;
