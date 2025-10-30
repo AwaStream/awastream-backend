@@ -10,9 +10,16 @@ const {
     getAllCreatorVideos,
     getVideoStats,
     getDailyPerformance,
-    getVideoTransactions, 
+    getVideoTransactions,
+    getPlaybackDetails, 
+    getTrailerStream,
 } = require('../controllers/videoController');
 const { authenticate } = require('../middleware/authMiddleware');
+const { 
+    startWatchSession, 
+    sendWatchHeartbeat, 
+    endWatchSession 
+} = require('../controllers/analyticsController');
 
 router.route('/')
     .get(authenticate, getAllCreatorVideos)
@@ -22,6 +29,8 @@ router.route('/')
 router.post('/generate-upload-url', authenticate, generateUploadUrl);
 router.get('/stream/:slug', streamVideo);
 
+router.get('/access/:slug', authenticate, getPlaybackDetails);
+router.get('/trailer/:slug', getTrailerStream);
 // --- Slug-based routes MUST come before the generic '/:slug' route ---
 router.get('/:slug/stats', authenticate, getVideoStats);
 router.get('/:slug/transactions', authenticate, getVideoTransactions);
@@ -32,5 +41,15 @@ router.route('/:slug')
     .get(getVideoBySlug)
     .put(authenticate, updateVideo)
     .delete(authenticate, deleteVideo); 
+// @desc    Tells the server the user has started playing a video
+router.post('/analytics/start', authenticate, startWatchSession);
+
+// @route   POST /api/videos/analytics/heartbeat
+// @desc    Sent every 30-60s to prove the user is still watching
+router.post('/analytics/heartbeat', authenticate, sendWatchHeartbeat);
+
+// @route   POST /api/videos/analytics/end
+// @desc    Tells the server the user has stopped watching (closed tab, etc.)
+router.post('/analytics/end', authenticate, endWatchSession);
 
 module.exports = router;

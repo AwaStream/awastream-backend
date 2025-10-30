@@ -1,0 +1,268 @@
+{
+	"info": {
+		"_postman_id": "89b5c2e3-6c0b-47e1-b4d2-f94d0752e505",
+		"name": "Awastream - Video Management & Access",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"description": "API routes for creators to monetize videos and for viewers to access content securely."
+	},
+	"item": [
+		{
+			"name": "Creator Endpoints (Requires Auth)",
+			"item": [
+				{
+					"name": "1. Create Video (YouTube & Trailer)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sourceType\": \"youtube\",\n    \"youtubeUrl\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\",\n    \"priceNaira\": 150.00,\n    \"trailerSourceType\": \"youtube\",\n    \"trailerSourceId\": \"https://www.youtube.com/watch?v=trailer_id_example\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/v1/videos",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos"
+							]
+						},
+						"description": "Monetize a YouTube video. Use priceNaira: 0 to make it free. If Direct Upload, replace youtubeUrl with title, description, s3Key, and thumbnailUrl."
+					},
+					"response": []
+				},
+				{
+					"name": "2. Get S3 Presigned Upload URL",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"filename\": \"my_course_video.mp4\",\n    \"filetype\": \"video/mp4\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/v1/videos/generate-upload-url",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"generate-upload-url"
+							]
+						},
+						"description": "Get a secure, temporary URL to upload a video file directly to S3. Returns `uploadUrl` and `key`."
+					},
+					"response": []
+				},
+				{
+					"name": "3. Get Video Stats (Analytics)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/v1/videos/:slug/stats",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								":slug",
+								"stats"
+							],
+							"variable": [
+								{
+									"key": "slug",
+									"value": "your-video-slug-here"
+								}
+							]
+						},
+						"description": "Retrieve detailed creator-only stats (total earnings, conversion rate, etc.) for a specific video."
+					},
+					"response": []
+				},
+				{
+					"name": "4. Update Video Details",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"priceNaira\": 200,\n    \"description\": \"Updated description.\",\n    \"trailerSourceType\": \"none\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/v1/videos/:slug",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								":slug"
+							],
+							"variable": [
+								{
+									"key": "slug",
+									"value": "your-video-slug-here"
+								}
+							]
+						},
+						"description": "Update video details (title, description, price, trailer settings)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Viewer & Access Endpoints",
+			"item": [
+				{
+					"name": "5. Get Public Video Data (Landing Page)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/v1/videos/:slug",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								":slug"
+							],
+							"variable": [
+								{
+									"key": "slug",
+									"value": "your-video-slug-here"
+								}
+							]
+						},
+						"description": "Fetches public data (title, price, thumbnail, trailer data). Used by the public ProductLanding component. Fixes the `trailersourcetype` error by verifying fields exist."
+					},
+					"response": []
+				},
+				{
+					"name": "6. Get Secure Playback Details (Gatekeeper)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/v1/videos/access/:slug",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"access",
+								":slug"
+							],
+							"variable": [
+								{
+									"key": "slug",
+									"value": "your-video-slug-here"
+								}
+							]
+						},
+						"description": "Requires authentication. Backend verifies payment/free access. Returns either `sourceId` (YouTube ID) or `streamUrl` (S3 tokenized link)."
+					},
+					"response": []
+				},
+				{
+					"name": "7. Get Public Trailer Stream (Direct Upload)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/v1/videos/trailer/:slug",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"trailer",
+								":slug"
+							],
+							"variable": [
+								{
+									"key": "slug",
+									"value": "your-video-slug-here"
+								}
+							]
+						},
+						"description": "Public, unauthenticated endpoint to stream a directly uploaded S3 trailer."
+					},
+					"response": []
+				},
+				{
+					"name": "8. Get Secure Video Stream (S3)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/v1/videos/stream/:slug?token={{TOKEN_FROM_ACCESS_ENDPOINT}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"stream",
+								":slug"
+							],
+							"query": [
+								{
+									"key": "token",
+									"value": "{{TOKEN_FROM_ACCESS_ENDPOINT}}",
+									"disabled": true
+								}
+							],
+							"variable": [
+								{
+									"key": "slug",
+									"value": "your-video-slug-here"
+								}
+							]
+						},
+						"description": "Requires the short-lived JWT generated by Endpoint 6. Streams the main video content."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "BASE_URL",
+			"value": "http://localhost:5005",
+			"type": "string"
+		}
+	]
+}

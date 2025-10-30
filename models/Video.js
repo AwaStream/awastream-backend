@@ -20,15 +20,28 @@ const VideoSchema = new mongoose.Schema({
     title: { type: String, required: true },
     description: { type: String },
     thumbnailUrl: { type: String, required: true },
-    priceNaira: { type: Number, required: true },
+    priceNaira: { 
+        type: Number,
+        required: true
+    },
     priceKobo: { 
         type: Number, 
-        required: true 
+        required: true,
+        min: 0 
     },
+    trailerSourceType: {
+        type: String,
+        enum: ['youtube', 'direct', 'none'], 
+        default: 'none',
+    },
+    trailerSourceId: {
+        type: String, 
+        trim: true,
+        default: null,
+    },
+    
     shareableSlug: { type: String, required: true, unique: true },
     isActive: { type: Boolean, default: true },
-    
-    // --- NEW FIELDS FOR ANALYTICS AND STATS ---
 
     totalSales: {
         type: Number,

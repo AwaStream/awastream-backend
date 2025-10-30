@@ -16,6 +16,12 @@ const { handleTransferWebhook } = require('../services/payoutService');
 const initializePayment = asyncHandler(async (req, res) => {
     const { videoId, bundleId } = req.body;
     const user = req.user;
+    
+    if (!user || !user.email) {
+        res.status(401); 
+        throw new Error('Authentication required, or user profile is missing email.');
+    }
+    
 
     let product;
     let productType;

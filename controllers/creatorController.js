@@ -10,7 +10,7 @@ const payoutService = require('../services/payoutService');
 const { startOfDay, subDays } = require('date-fns');
 
 const Bundle = require('../models/Bundle');
-const VideoView = require('../models/VideoView');
+const VideoViewAggregate = require('../models/VideoViewAggregate')
 
 const getCreatorDashboard = asyncHandler(async (req, res) => {
     const creatorId = new mongoose.Types.ObjectId(req.user.id);
@@ -71,6 +71,8 @@ const getCreatorAnalytics = asyncHandler(async (req, res) => {
         ...bundles.map(b => b._id)
     ];
 
+    const videoIds = videos.map(v => v._id);
+
     // --- 2. Run all aggregations in parallel ---
     const [salesData, viewsData, transactionList] = await Promise.all([
         // Aggregate sales data for charts and stats
@@ -83,15 +85,21 @@ const getCreatorAnalytics = asyncHandler(async (req, res) => {
             }},
             { $sort: { _id: 1 } }
         ]),
-        // Aggregate views data for charts
-        VideoView.aggregate([
-            { $match: { video: { $in: videos.map(v => v._id) }, createdAt: { $gte: startDate, $lte: endDate } } },
-            { $group: {
-                _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-                viewsCount: { $sum: 1 }
-            }},
-            { $sort: { _id: 1 } }
-        ]),
+       
+        VideoViewAggregate.aggregate([
+            { $match: { 
+                video: { $in: videoIds },
+                viewCounted: true, 
+                viewCountedAt: { $gte: startDate, $lte: endDate } 
+            } },
+            { $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$viewCountedAt" } },
+                views: { $sum: 1 } // The field is named 'views'
+            }},
+            { $sort: { _id: 1 } }
+        ]),
+        
+
         // Get recent transactions for the list
         Transaction.find({ creator: creatorId, status: 'successful', createdAt: { $gte: startDate, $lte: endDate } })
             .sort({ createdAt: -1 })
@@ -111,7 +119,7 @@ const getCreatorAnalytics = asyncHandler(async (req, res) => {
 
     let totalViews = 0;
     const viewsMap = new Map(viewsData.map(item => [item._id, item]));
-    viewsData.forEach(item => { totalViews += item.viewsCount });
+    viewsData.forEach(item => { totalViews += item.views });
 
     // Combine chart data
     const allDates = new Set([...salesMap.keys(), ...viewsMap.keys()]);
@@ -119,7 +127,7 @@ const getCreatorAnalytics = asyncHandler(async (req, res) => {
         date,
         earnings: (salesMap.get(date)?.totalEarningsKobo || 0) / 100,
         sales: salesMap.get(date)?.salesCount || 0,
-        views: viewsMap.get(date)?.viewsCount || 0,
+        views: viewsMap.get(date)?.views || 0,
     }));
 
     // Calculate top performing content
