@@ -223,65 +223,6 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new Error('Email could not be sent. Please check server configuration.');
     }
 });
-// const registerUser = asyncHandler(async (req, res) => {
-//     const { firstName, lastName, userName, email, password, intent, referralCode } = req.body;
-//     const userExists = await User.findOne({ email });
-//     if (userExists) {
-//         res.status(400);
-//         throw new Error('User with this email already exists.');
-//     }
-//     const userNameExists = await User.findOne({ userName });
-//     if (userNameExists) {
-//         res.status(400);
-//         throw new Error(`The username "${userName}" is already taken. Please choose another.`);
-//     }
-//     const salt = await bcrypt.genSalt(10);
-//     const passwordHash = await bcrypt.hash(password, salt);
-//     let userRole = (intent === 'creator') ? 'creator' : 'viewer';
-//     const user = await User.create({
-//         firstName,
-//         lastName,
-//         userName,
-//         email,
-//         passwordHash,
-//         authMethod: 'local',
-//         role: userRole,
-//     });
-// if (referralCode) {
-//     const referrer = await User.findOne({ userName: referralCode, role: 'onboarder' });
-//     if (referrer) {
-//         user.referredBy = referrer._id; // Update the user object we created
-//         await user.save(); // And save the change to the database
-//     }
-// }
-//     if (!user) {
-//         res.status(400);
-//         throw new Error('Invalid user data');
-//     }
-//     const verificationToken = user.generateEmailVerificationToken();
-//     await user.save();
-//     const verificationUrl = `${process.env.AWASTREAM_FRONTEND_HOST}/verify-email?token=${verificationToken}`;
-//     try {
-//         await sendEmail({
-//             subject: 'Verify Your AwaStream Account',
-//             send_to: user.email,
-//             sent_from: `${process.env.AWASTREAM_FROM_NAME || 'AwaStream Team'} <${process.env.AWASTREAM_FROM_EMAIL || 'no-reply@awastream.com'}>`,
-//             reply_to: process.env.AWASTREAM_FROM_EMAIL || 'no-reply@awastream.com',
-//             template: 'emailVerification',
-//             name: user.firstName,
-//             link: verificationUrl,
-//         });
-//         res.status(201).json({
-//             message: `Registration successful! A verification email has been sent to ${user.email}.`
-//         });
-//     } catch (error) {
-//         user.emailVerificationToken = undefined;
-//         user.emailVerificationTokenExpires = undefined;
-//         await user.save();
-//         res.status(500);
-//         throw new Error('Email could not be sent. Please check server configuration.');
-//     }
-// });
 
 const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
@@ -367,47 +308,6 @@ const verifyEmail = asyncHandler(async (req, res) => {
     sendTokenResponse(user, 200, res);
 });
 
-// const resendVerificationEmail = asyncHandler(async (req, res) => {
-//     const { email } = req.body;
-//     const user = await User.findOne({ email });
-
-//     if (!user) {
-//         return res.status(200).json({ 
-//             message: `If an account with ${email} exists and is unverified, a new verification email has been sent.`
-//         });
-//     }
-
-//     if (user.isEmailVerified) {
-//         res.status(400); // 400 is OK here, it's not a security leak, it's a state error.
-//         throw new Error('This account has already been verified.');
-//     }
-
-//     // --- This code only runs if the user exists and is not verified ---
-//     const verificationToken = user.generateEmailVerificationToken();
-//     await user.save();
-    
-//     const verificationUrl = `${process.env.AWASTREAM_FRONTEND_HOST}/verify-email?token=${verificationToken}`;
-    
-//     try {
-//         await sendEmail({
-//             subject: 'Resend: Verify Your AwaStream Account',
-//             send_to: user.email,
-//             sent_from: `${process.env.AWASTREAM_FROM_NAME || 'AwaStream Team'} <${process.env.AWASTREAM_FROM_EMAIL || 'no-reply@awastream.com'}>`,
-//             reply_to: process.env.AWASTREAM_FROM_EMAIL || 'no-reply@awastream.com',
-//             template: 'emailVerification',
-//             name: user.firstName,
-//             link: verificationUrl,
-//         });
-
-//         res.status(200).json({ 
-//             message: `If an account with ${email} exists and is unverified, a new verification email has been sent.` 
-//         });
-
-//     } catch (error) {
-//         res.status(500);
-//         throw new Error('Email could not be sent. Please try again later.');
-//     }
-// });
 const resendVerificationEmail = asyncHandler(async (req, res) => {
     const { email } = req.body;
     const user = await User.findOne({ email });
@@ -450,49 +350,6 @@ const resendVerificationEmail = asyncHandler(async (req, res) => {
         throw new Error('Email could not be sent. Please try again later.');
     }
 });
-
-// const forgotPassword = asyncHandler(async (req, res) => {
-//     const { email } = req.body;
-//     const user = await User.findOne({ email });
-
-//     if (!user) {
-//         return res.status(200).json({ 
-//             message: 'If an account with that email exists, a password reset link has been sent.' 
-//         });
-//     }
-
-//     // --- This code only runs if the user *was* found ---
-//     const resetToken = user.generatePasswordResetToken();
-//     await user.save();
-    
-//     const resetUrl = `${process.env.AWASTREAM_FRONTEND_HOST}/reset-password?token=${resetToken}`;
-    
-//     try {
-//         await sendEmail({
-//             subject: 'AwaStream Password Reset Request',
-//             send_to: user.email,
-//             sent_from: `${process.env.AWASTREAM_FROM_NAME || 'AwaStream Team'} <${process.env.AWASTREAM_FROM_EMAIL || 'no-reply@awastream.com'}>`,
-//             reply_to: process.env.AWASTREAM_FROM_EMAIL || 'no-reply@awastream.com',
-//             template: 'passwordReset',
-//             name: user.firstName,
-//             link: resetUrl,
-//         });
-
-//         res.status(200).json({ 
-//             message: 'If an account with that email exists, a password reset link has been sent.' 
-//         });
-
-//     } catch (error) {
-//         user.resetPasswordToken = undefined;
-//         user.resetPasswordExpires = undefined;
-//         await user.save();
-        
-//         // We still throw a 500 if the *email service* fails, as this is a server problem.
-//         res.status(500);
-//         throw new Error('Email could not be sent. Please try again later.');
-//     }
-// });
-
 
 const forgotPassword = asyncHandler(async (req, res) => {
     const { email } = req.body;
