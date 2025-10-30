@@ -2,10 +2,11 @@ const asyncHandler = require('express-async-handler');
 const crypto = require('crypto');
 const mongoose = require('mongoose')
 const jwt = require('jsonwebtoken');
-const VideoView = require('../models/VideoView');
 const Video = require('../models/Video');
 const Transaction = require('../models/Transaction');
 const Comment = require('../models/Comment');
+const WatchSession = require('../models/WatchSession');
+const VideoViewAggregate = require('../models/VideoViewAggregate')
 const { generateVideoAccessToken } = require('../utils/generateVideoAccessToken');
 const { fetchVideoDetails, getYouTubeVideoId } = require('../services/youtubeService');
 const { generatePresignedUploadUrl, getVideoStream } = require('../services/s3Service');
@@ -381,9 +382,6 @@ const getTrailerStream = asyncHandler(async (req, res) => {
     }
 });
 
-
-// Assume asyncHandler, Video, VideoView, and crypto are imported at the top
-
 const getVideoBySlug = asyncHandler(async (req, res) => {
     const video = await Video.findOne({ shareableSlug: req.params.slug })
         .populate('creator', 'userName avatarUrl');
@@ -391,27 +389,6 @@ const getVideoBySlug = asyncHandler(async (req, res) => {
     if (!video) {
         res.status(404);
         throw new Error('Video not found');
-    }
-    
-    // --- Consistent & Private View Tracking ---
-    try {
-        // Hash the IP for privacy (Make sure 'crypto' is imported!)
-        const viewerHash = crypto.createHash('sha256').update(req.ip).digest('hex');
-        
-        // Attempt to create a new unique view record
-        await VideoView.create({
-            video: video._id,
-            viewerIp: viewerHash,
-        });
-
-        // Increment the master view counter
-        await Video.updateOne({ _id: video._id }, { $inc: { totalViews: 1 } });
-
-    } catch (error) {
-        // Safely ignore duplicate key errors (non-unique views)
-        if (error.code !== 11000) { 
-            console.warn("Error logging video view:", error.message);
-        }
     }
     
     // --- CORRECTED PUBLIC DATA RESPONSE ---
@@ -462,15 +439,19 @@ const getDailyPerformance = asyncHandler(async (req, res) => {
             { $sort: { _id: 1 } }
         ]);
         
-            const viewsData = await VideoView.aggregate([
-            { $match: { video: videoId, createdAt: { $gte: startDate, $lte: endDate } } },
-            { $group: {
-                _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-                views: { $sum: 1 }
-            }},
-            { $sort: { _id: 1 } }
-        ]);
-
+           // --- NEW (Uses the correct VideoViewAggregate model for analytics) ---
+const viewsData = await VideoViewAggregate.aggregate([
+    { $match: { 
+        video: videoId, 
+        viewCounted: true, // Only count if the 30-second rule was met
+        viewCountedAt: { $gte: startDate, $lte: endDate } 
+    } },
+    { $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+        views: { $sum: 1 } // Summing the *counted* views
+    }},
+    { $sort: { _id: 1 } }
+]);
         const allDays = eachDayOfInterval({ start: startDate, end: endDate });
         const performanceMap = new Map();
         
@@ -550,10 +531,11 @@ const deleteVideo = asyncHandler(async (req, res) => {
     }
 
     // Delete associated data
-    await Comment.deleteMany({ video: video._id });
-    await VideoView.deleteMany({ video: video._id });
+await Comment.deleteMany({ video: video._id });
+await VideoViewAggregate.deleteMany({ video: video._id });
+await WatchSession.deleteMany({ video: video._id }); 
 
-    await video.deleteOne();
+await video.deleteOne();
 
     res.status(200).json({ message: 'Video removed successfully' });
 });

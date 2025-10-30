@@ -86,6 +86,7 @@ const sendWatchHeartbeat = asyncHandler(async (req, res) => {
         // Has the user passed the 30-second mark AND we haven't counted the view yet?
         if (aggregate.maxDurationReached >= VIEW_THRESHOLD_SECONDS && !aggregate.viewCounted) {
             aggregate.viewCounted = true;
+            aggregate.viewCountedAt = Date.now();
             
             // Increment the master counter on the Video model
             await Video.findByIdAndUpdate(session.video, { $inc: { totalViews: 1 } });
@@ -97,21 +98,57 @@ const sendWatchHeartbeat = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    A user has stopped watching (closed tab, etc.)
+ * @desc    A user has stopped watching
  * @route   POST /api/videos/analytics/end
  */
-const endWatchSession = asyncHandler(async (req, res) => {
-    const { sessionId } = req.body;
-    
-    await WatchSession.updateOne(
-        { sessionId, user: req.user._id },
-        { status: 'ended', lastHeartbeatAt: Date.now() }
-    );
 
-    // Note: We already updated the aggregate stats during the heartbeats,
-    // so we don't need to do a final calculation here.
-    
-    res.status(200).json({ message: "Session ended." });
+const endWatchSession = asyncHandler(async (req, res) => {
+    const { sessionId, currentTime } = req.body; 
+    const user = req.user;
+
+    // 1. Find the active session
+    const session = await WatchSession.findOne({ 
+        sessionId, 
+        user: user._id, 
+        status: 'active' 
+    });
+
+    // If session is already ended or not found, just exit.
+    if (!session) {
+        return res.status(200).json({ message: "Session not found or already ended." });
+    }
+
+    // 2. Mark session as ended
+    session.status = 'ended';
+    session.lastReportedTime = currentTime;
+    session.lastHeartbeatAt = Date.now();
+    await session.save();
+
+    // 3. Do a FINAL update on the aggregate record
+    if (currentTime) {
+        const aggregate = await VideoViewAggregate.findOne({ 
+            user: user._id, 
+            video: session.video 
+        });
+
+        if (aggregate) {
+            // Only update if this is the new max time
+            if (currentTime > aggregate.maxDurationReached) {
+                aggregate.maxDurationReached = currentTime;
+            }
+
+            // Safety check: Count the view if they passed the threshold
+            // right before closing the tab.
+            if (aggregate.maxDurationReached >= VIEW_THRESHOLD_SECONDS && !aggregate.viewCounted) {
+                aggregate.viewCounted = true;
+                aggregate.viewCountedAt = Date.now(); // <-- Use fix from Problem 1
+                await Video.findByIdAndUpdate(session.video, { $inc: { totalViews: 1 } });
+            }
+            await aggregate.save();
+        }
+    }
+    
+    res.status(200).json({ message: "Session ended and progress saved." });
 });
 
 module.exports = {

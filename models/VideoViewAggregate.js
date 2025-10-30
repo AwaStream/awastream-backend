@@ -26,6 +26,10 @@ const VideoViewAggregateSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    viewCountedAt: {
+        type: Date,
+        default: null,
+    },
 }, { timestamps: true });
 
 // This unique index is the *core* of the entire system.
