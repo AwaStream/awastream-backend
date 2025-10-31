@@ -8,7 +8,7 @@ const { MAX_LOGIN_ATTEMPTS, LOCK_TIME } = require('../config/constants')
 const { sendEmail } = require('../services/emailService');
 
 // --- Updated sendTokenResponse function (Performs Redirect) ---
-const sendTokenResponse = (user, statusCode, res) => {
+const sendTokenResponse = (user, statusCode, res, redirectOverride) => {
     // Assume generateTokens and other necessary functions are defined elsewhere
     const { accessToken, refreshToken } = generateTokens(user._id, user.role);
 
@@ -45,6 +45,10 @@ const sendTokenResponse = (user, statusCode, res) => {
 
 
     let redirectPath;
+
+    if (redirectOverride) {
+        redirectPath = redirectOverride;
+    } else {
    // Role-based Path Determination
     switch (user.role) {
         case 'superadmin': 
@@ -62,7 +66,9 @@ const sendTokenResponse = (user, statusCode, res) => {
         default: 
             redirectPath = '/';
     }
+}
 
+    
     if (statusCode === 302) { 
         const frontendUrl = process.env.AWASTREAM_FRONTEND_URL || process.env.AWASTREAM_FRONTEND_HOST || 'http://localhost:5173';
         
@@ -163,65 +169,78 @@ const refreshToken = asyncHandler(async (req, res) => {
         throw new Error('Not authorized, token failed or user session is invalid.');
     }
 });
-const registerUser = asyncHandler(async (req, res) => {
-    const { firstName, lastName, userName, email, password, intent, referralCode } = req.body;
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-        res.status(400);
-        throw new Error('User with this email already exists.');
-    }
-    const userNameExists = await User.findOne({ userName });
-    if (userNameExists) {
-        res.status(400);
-        throw new Error(`The username "${userName}" is already taken. Please choose another.`);
-    }
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
-    let userRole = (intent === 'creator') ? 'creator' : 'viewer';
-    const user = await User.create({
-        firstName,
-        lastName,
-        userName,
-        email,
-        passwordHash,
-        authMethod: 'local',
-        role: userRole,
-    });
-    if (referralCode) {
-        const referrer = await User.findOne({ userName: referralCode, role: 'onboarder' });
-        if (referrer) {
-            user.referredBy = referrer._id;
-            await user.save(); 
-        }
-    }
-    if (!user) {
-        res.status(400);
-        throw new Error('Invalid user data');
-    }
-    const verificationToken = user.generateEmailVerificationToken();
-    await user.save();
 
-    // --- BUG 1 FIX: Use robust base URL logic ---
-    const baseUrl = process.env.AWASTREAM_FRONTEND_URL || process.env.AWASTREAM_FRONTEND_HOST || 'http://localhost:5173';
-    const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
-    
+const registerUser = asyncHandler(async (req, res) => {
+
+    const { firstName, lastName, userName, email, password, intent, referralCode, redirectPath } = req.body;
+    
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+        res.status(400);
+        throw new Error('User with this email already exists.');
+    }
+    const userNameExists = await User.findOne({ userName });
+    if (userNameExists) {
+        res.status(400);
+        throw new Error(`The username "${userName}" is already taken. Please choose another.`);
+    }
+    
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+    let userRole = (intent === 'creator') ? 'creator' : 'viewer';
+    
+    const user = await User.create({
+        firstName,
+        lastName,
+        userName,
+        email,
+        passwordHash,
+        authMethod: 'local',
+        role: userRole,
+    });
+    
+    if (referralCode) {
+        const referrer = await User.findOne({ userName: referralCode, role: 'onboarder' });
+        if (referrer) {
+            user.referredBy = referrer._id;
+            await user.save(); 
+        }
+    }
+    
+    if (!user) {
+        res.status(400);
+        throw new Error('Invalid user data');
+    }
+    
+    const verificationToken = user.generateEmailVerificationToken();
+    await user.save();
+
+    const baseUrl = process.env.AWASTREAM_FRONTEND_URL || process.env.AWASTREAM_FRONTEND_HOST || 'http://localhost:5173';
+    const defaultRedirect = user.role === 'creator' ? '/dashboard' : '/library';
+    
+    const finalRedirectPath = redirectPath || defaultRedirect; 
+    
+    const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}&redirect=${encodeURIComponent(finalRedirectPath)}`;
+    
     try {
-        await sendEmail({
-            subject: 'Verify Your AwaStream Account',
-            send_to: user.email,
-            sent_from: `${process.env.AWASTREAM_FROM_NAME || 'AwaStream Team'} <${process.env.AWASTREAM_FROM_EMAIL || 'no-reply@awastream.com'}>`,
-            reply_to: process.env.AWASTREAM_FROM_EMAIL || 'no-reply@awastream.com',
-            template: 'emailVerification',
-            name: user.firstName,
-            link: verificationUrl,
-        });
-        res.status(201).json({
-            message: `Registration successful! A verification email has been sent to ${user.email}.`
-        });
-    } catch (error) { 
-        res.status(500);
-        throw new Error('Email could not be sent. Please check server configuration.');
-    }
+        await sendEmail({
+            subject: 'Verify Your AwaStream Account',
+            send_to: user.email,
+            sent_from: `${process.env.AWASTREAM_FROM_NAME || 'AwaStream Team'} <${process.env.AWASTREAM_FROM_EMAIL || 'no-reply@awastream.com'}>`,
+            reply_to: process.env.AWASTREAM_FROM_EMAIL || 'no-reply@awastream.com',
+            template: 'emailVerification',
+            name: user.firstName,
+            link: verificationUrl,
+        });
+        
+        res.status(201).json({
+            message: `Registration successful! A verification email has been sent to ${user.email}.`
+        });
+    } catch (error) { 
+        // Handle email failure
+        res.status(500);
+        throw new Error('Email could not be sent. Please check server configuration.');
+    }
 });
 
 const loginUser = asyncHandler(async (req, res) => {
@@ -285,13 +304,13 @@ const loginUser = asyncHandler(async (req, res) => {
     }
 });
 
-
 const googleCallback = asyncHandler(async (req, res) => {
-    sendTokenResponse(req.user, 302, res);
+    const customRedirect = req.user.postAuthPath || null; 
+    sendTokenResponse(req.user, 302, res, customRedirect);
 });
 
 const verifyEmail = asyncHandler(async (req, res) => {
-    const { token } = req.body;
+    const { token, redirectUrl } = req.body;
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
     const user = await User.findOne({
         emailVerificationToken: hashedToken,
@@ -305,8 +324,9 @@ const verifyEmail = asyncHandler(async (req, res) => {
     user.emailVerificationToken = undefined;
     user.emailVerificationTokenExpires = undefined;
     await user.save();
-    sendTokenResponse(user, 200, res);
+    sendTokenResponse(user, 302, res, redirectUrl);
 });
+    
 
 const resendVerificationEmail = asyncHandler(async (req, res) => {
     const { email } = req.body;
