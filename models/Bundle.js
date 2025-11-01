@@ -37,7 +37,7 @@ const BundleSchema = new mongoose.Schema({
     videos: [{ // An array of ObjectIds referencing individual Video documents
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Video',
-        required: true
+        required: false
     }],
     isActive: { 
         type: Boolean, 

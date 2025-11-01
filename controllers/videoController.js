@@ -490,6 +490,11 @@ const deleteVideo = asyncHandler(async (req, res) => {
         throw new Error('Not authorized to update this video.');
     }
 
+    await Bundle.updateMany(
+        { videos: video._id }, 
+        { $pull: { videos: video._id } }
+    );
+
     // Delete associated data
 await Comment.deleteMany({ video: video._id });
 await VideoViewAggregate.deleteMany({ video: video._id });

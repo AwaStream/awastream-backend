@@ -10,13 +10,14 @@ const Video = require('../models/Video'); // To validate video IDs
  * @access  Private (Creator)
  */
 const createBundle = asyncHandler(async (req, res) => {
-    const { title, description, thumbnailUrl, priceNaira, videoIds } = req.body;
+    const { title, description, thumbnailUrl, priceNaira, videoIds: rawVideoIds } = req.body;
     const creatorId = req.user.id;
 
-    if (!title || !thumbnailUrl || !priceNaira || !videoIds || !Array.isArray(videoIds) || videoIds.length === 0) {
+    if (!title || !thumbnailUrl || !priceNaira) {
         res.status(400);
-        throw new Error('Title, thumbnail URL, price, and at least one video are required for a bundle.');
+        throw new Error('Title, thumbnail URL, and price are required for a bundle.');
     }
+    const videoIds = (Array.isArray(rawVideoIds) && rawVideoIds.length > 0) ? rawVideoIds : []; 
 
     const priceValue = parseFloat(priceNaira);
     if (isNaN(priceValue) || priceValue < 100) { // Minimum bundle price
