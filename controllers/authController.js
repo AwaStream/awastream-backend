@@ -373,13 +373,18 @@ const resendVerificationEmail = asyncHandler(async (req, res) => {
 
 const forgotPassword = asyncHandler(async (req, res) => {
     const { email } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select('+lockUntil');
 
     if (!user) {
         return res.status(200).json({ 
             message: 'If an account with that email exists, a password reset link has been sent.' 
         });
     }
+    if (user.lockUntil && user.lockUntil > Date.now()) {
+        res.status(423); // 423 Locked is more accurate than 429
+        const minutesLeft = Math.ceil((user.lockUntil.getTime() - Date.now()) / (60 * 1000));
+        throw new Error(`Account locked due to too many failed attempts. Try again in ${minutesLeft} minutes.`);
+    }
 
     const resetToken = user.generatePasswordResetToken();
     await user.save();
