@@ -157,10 +157,7 @@ const updateVideo = asyncHandler(async (req, res) => {
         if (trailerSourceType === 'youtube') {
             updates.trailerSourceId = trailerSourceId;
         } else if (trailerSourceType === 'direct') {
-            // Note: Frontend must upload file first and send the S3 key
-            // This assumes the frontend sends the key in req.body.trailerSourceId 
-            // if a new file was uploaded, OR sends the old key/null if none.
-            updates.trailerSourceId = trailerSourceId || video.trailerSourceId;
+                 updates.trailerSourceId = trailerSourceId || video.trailerSourceId;
         } else {
             // If 'none' or null, clear the source ID
             updates.trailerSourceId = null;
@@ -175,41 +172,6 @@ const updateVideo = asyncHandler(async (req, res) => {
 
     res.status(200).json(updatedVideo);
 });
-
-// Don't forget to export this controller function!
-// module.exports = { /* ..., getVideoStats, updateVideo, ... */ };
-// const updateVideo = asyncHandler(async (req, res) => {
-//     const { title, description, priceNaira } = req.body;
-
-//     const video = await Video.findOne({ shareableSlug: req.params.slug });
-
-//     if (!video) {
-//         res.status(404);
-//         throw new Error('Video not found');
-//     }
-
-//     // Check for ownership
-//     if (video.creator.toString() !== req.user.id) {
-//         res.status(401);
-//         throw new Error('User not authorized to update this video');
-//     }
-
-//     video.title = title || video.title;
-//     video.description = description || video.description;
-    
-//     if (priceNaira) {
-//         const priceValue = parseFloat(priceNaira);
-//         if (isNaN(priceValue) || priceValue <= 0) {
-//             res.status(400);
-//             throw new Error('Please provide a valid price.');
-//         }
-//         video.priceNaira = priceValue;
-//         video.priceKobo = Math.round(priceValue * 100);
-//     }
-
-//     const updatedVideo = await video.save();
-//     res.status(200).json(updatedVideo);
-// });
 
 /**
  * @desc    Generate a presigned URL for direct S3 upload by calling the S3 service.
@@ -402,9 +364,6 @@ const getVideoBySlug = asyncHandler(async (req, res) => {
         shareableSlug: video.shareableSlug,
         creator: video.creator,
         sourceType: video.sourceType,
-        
-        // ✅ CORRECTED LINES: Access properties directly from the 'video' object
-        // Use '||' for backward compatibility with old videos that might have no field.
         trailerSourceType: video.trailerSourceType || 'none', 
         trailerSourceId: video.trailerSourceId || null,
     };
@@ -421,9 +380,10 @@ const getDailyPerformance = asyncHandler(async (req, res) => {
             return res.status(404).json({ message: 'Video not found' });
         }
 
-        if (video.creator.toString() !== req.user.id) {
-            return res.status(401).json({ message: 'Not authorized' });
-        }
+        if (video.creator.toString() !== req.user._id.toString()) {
+        res.status(401);
+        throw new Error('Not authorized to update this video.');
+    }
 
 
         const videoId = video._id;
@@ -525,9 +485,9 @@ const deleteVideo = asyncHandler(async (req, res) => {
         throw new Error('Video not found');
     }
 
-    if (video.creator.toString() !== req.user.id) {
+    if (video.creator.toString() !== req.user._id.toString()) {
         res.status(401);
-        throw new Error('User not authorized to delete this video');
+        throw new Error('Not authorized to update this video.');
     }
 
     // Delete associated data
