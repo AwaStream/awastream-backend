@@ -184,6 +184,15 @@ const generateUploadUrl = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error('Filename and filetype are required.');
     }
+    const ALLOWED_TRAILER_TYPES = [
+        'video/mp4',
+        'video/webm',
+        'video/quicktime'
+    ];
+    if (!ALLOWED_TRAILER_TYPES.includes(filetype)) {
+        res.status(400);
+        throw new Error('Invalid file type. Only video files are allowed.');
+    }
     const uploadData = await generatePresignedUploadUrl(req.user.id, filename, filetype);
     res.status(200).json(uploadData);
 });
@@ -332,9 +341,11 @@ const getTrailerStream = asyncHandler(async (req, res) => {
         const { stream, contentType, contentLength } = await getVideoStream(video.trailerSourceId);
 
         res.writeHead(200, {
-            'Content-Type': contentType,
+            'Content-Type': 'video/mp4',
             'Content-Length': contentLength,
-            'Accept-Ranges': 'bytes', // Good for video players
+            'Accept-Ranges': 'bytes',
+            'X-Content-Type-Options': 'nosniff',
+            'Content-Security-Policy': "default-src 'self'; object-src 'none'; frame-ancestors 'none';"
         });
 
         stream.pipe(res);

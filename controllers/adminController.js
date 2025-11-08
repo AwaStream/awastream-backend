@@ -5,6 +5,11 @@ const Video = require('../models/Video');
 const Transaction = require('../models/Transaction');
 const Payout = require('../models/Payout');
 
+
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+}
+
 // @desc    Get platform-wide statistics for the admin dashboard
 // @route   GET /api/v1/admin/dashboard
 // @access  Private (Superadmin)
@@ -277,15 +282,20 @@ const getAllUsers = asyncHandler(async (req, res) => {
     // Build the query object
     const query = { role: { $in: ['creator', 'viewer', 'onboarder'] } }; // Exclude other superadmins
 
+    // if (req.query.keyword) {
+    //     const keyword = { $regex: req.query.keyword, $options: 'i' };
+    //     query.$or = [
+    //         { firstName: keyword },
+    //         { lastName: keyword },
+    //         { userName: keyword },
+    //         { email: keyword },
+    //     ];
+    // }
     if (req.query.keyword) {
-        const keyword = { $regex: req.query.keyword, $options: 'i' };
-        query.$or = [
-            { firstName: keyword },
-            { lastName: keyword },
-            { userName: keyword },
-            { email: keyword },
-        ];
-    }
+        const escapedKeyword = escapeRegExp(req.query.keyword);
+        const keyword = { $regex: escapedKeyword, $options: 'i' }; 
+        query.$or = [ { firstName: keyword }, { lastName: keyword }, { userName: keyword }, { email: keyword } ];
+    }
     
     const count = await User.countDocuments(query);
     const users = await User.find(query)
