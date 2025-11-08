@@ -14,7 +14,7 @@ const {
     getPlaybackDetails, 
     getTrailerStream,
 } = require('../controllers/videoController');
-const { authenticate } = require('../middleware/authMiddleware');
+const { authenticate, authorize } = require('../middleware/authMiddleware');
 const { 
     startWatchSession, 
     sendWatchHeartbeat, 
@@ -23,10 +23,10 @@ const {
 
 router.route('/')
     .get(authenticate, getAllCreatorVideos)
-    .post(authenticate, createVideo);
+    .post(authenticate, authorize('creator'), createVideo);
 
 // --- Specific action routes ---
-router.post('/generate-upload-url', authenticate, generateUploadUrl);
+router.post('/generate-upload-url', authenticate, authorize('creator'), generateUploadUrl);
 router.get('/stream/:slug', streamVideo);
 
 router.get('/access/:slug', authenticate, getPlaybackDetails);

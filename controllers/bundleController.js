@@ -208,6 +208,20 @@ const reorderBundleVideos = asyncHandler(async (req, res) => {
         throw new Error('videoIds must be an array.');
     }
 
+    if (videoIds.length > 0) {
+        const videos = await Video.find({
+            _id: { $in: videoIds },
+            creator: req.user.id // <-- This check is the fix
+        });
+        
+        // If the number of found videos doesn't match the number of provided IDs,
+        // it means some IDs were invalid or belonged to another creator.
+        if (videos.length !== videoIds.length) {
+            res.status(403); // Forbidden
+            throw new Error('One or more video IDs are invalid or do not belong to you.');
+        }
+    }
+
     bundle.videos = videoIds; // Directly set the new order
     await bundle.save();
 

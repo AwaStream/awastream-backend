@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const WatchSession = require('../models/WatchSession');
 const VideoViewAggregate = require('../models/VideoViewAggregate');
 const Video = require('../models/Video');
+const checkAccess = require('../controllers/accessController')
 
 const VIEW_THRESHOLD_SECONDS = 30;
 
@@ -13,6 +14,18 @@ const VIEW_THRESHOLD_SECONDS = 30;
 const startWatchSession = asyncHandler(async (req, res) => {
     const { videoId } = req.body;
     const user = req.user;
+
+    const video = await Video.findById(videoId).select('priceKobo creator');
+    if (!video) {
+        res.status(404);
+        throw new Error('Video not found.');
+    }
+
+    const hasAccess = await checkAccess(user, video);
+    if (!hasAccess) {
+        res.status(403);
+        throw new Error('You do not have access to this video to start a session.');
+    }
 
     const aggregate = await VideoViewAggregate.findOneAndUpdate(
         { user: user._id, video: videoId },

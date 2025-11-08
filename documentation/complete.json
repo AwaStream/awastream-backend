@@ -1,0 +1,587 @@
+{
+	"info": {
+		"_postman_id": "e8a9f2b1-56c2-4a0e-94d3-4a1b02b1c2e0",
+		"name": "AwaStream API Collection v1.1 (Secure)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"description": "Comprehensive API documentation for AwaStream Backend v1.1, covering all routes, authentication, creator workflows, bundles, and administrative actions. All private requests rely on the 'accessToken' cookie obtained via login.",
+		"owner": "AwaStream Inc."
+	},
+	"item": [
+		{
+			"name": "🔐 1. Authentication & User Management",
+			"description": "Routes for registration, login, token management, and fetching user profile. All private routes in other folders rely on the 'accessToken' cookie set by the Login/Refresh endpoints.",
+			"item": [
+				{
+					"name": "POST Register New User (Viewer)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe\",\n    \"userName\": \"johnny_test_24\",\n    \"email\": \"john.doe@example.com\",\n    \"password\": \"P@ssword123\",\n    \"intent\": \"viewer\"\n}"
+						},
+						"url": {
+							"raw": "{{API_URL}}/auth/register",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						},
+						"description": "Creates a new user account. Role is set based on the `intent` field ('viewer' or 'creator')."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Login User (Sets Auth Cookie)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"john.doe@example.com\",\n    \"password\": \"P@ssword123\"\n}"
+						},
+						"url": {
+							"raw": "{{API_URL}}/auth/login",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticates the user and sets the secure `accessToken` and `refreshToken` cookies. All subsequent authenticated requests rely on these cookies."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Fetch Current User (/me)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{API_URL}}/auth/me",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						},
+						"description": "Fetches details of the currently authenticated user. Requires `accessToken` cookie."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Refresh Token (RTOR)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{API_URL}}/auth/refresh-token",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"auth",
+								"refresh-token"
+							]
+						},
+						"description": "Generates a new, short-lived `accessToken` and a new `refreshToken` using the existing `refreshToken` cookie. Used by the frontend to maintain session."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Forgot Password (Email Bombing Fix Applied)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"john.doe@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{API_URL}}/auth/forgot-password",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"auth",
+								"forgot-password"
+							]
+						},
+						"description": "Initiates password reset. **Security Note:** Now correctly checks account lockout status BEFORE dispatching the email (Fix for Finding #1)."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Logout User (Clears Cookies)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{API_URL}}/auth/logout",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						},
+						"description": "Clears both `accessToken` and `refreshToken` cookies, effectively ending the user session."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🎥 2. Creator: Video & Streaming",
+			"description": "Endpoints for creators to manage their content (requires 'creator' role via authorization middleware).",
+			"item": [
+				{
+					"name": "POST Create New Video (Requires Creator Role)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"priceNaira\": \"500\",\n    \"sourceType\": \"youtube\",\n    \"youtubeUrl\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\",\n    \"trailerSourceType\": \"youtube\",\n    \"trailerSourceId\": \"dQw4w9WgXcQ\"\n}"
+						},
+						"url": {
+							"raw": "{{API_URL}}/videos",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"videos"
+							]
+						},
+						"description": "Monetizes a new video, either from YouTube URL or a direct S3 key. Requires `authorize('creator')` (Fix for Finding #4)."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Get S3 Presigned Upload URL (Requires Creator Role)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"filename\": \"my_movie_part1.mp4\",\n    \"filetype\": \"video/mp4\"\n}"
+						},
+						"url": {
+							"raw": "{{API_URL}}/videos/generate-upload-url",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"videos",
+								"generate-upload-url"
+							]
+						},
+						"description": "Generates a time-limited URL for a creator to upload a file directly to S3. Requires `authorize('creator')` (Fix for Finding #4). **Security Note: Upload filetype is now strictly validated (Fix for Finding #2).**"
+					},
+					"response": []
+				},
+				{
+					"name": "GET Public Video Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{API_URL}}/videos/:slug",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"videos",
+								":slug"
+							],
+							"variable": [
+								{
+									"key": "slug",
+									"value": "sample-video-slug"
+								}
+							]
+						},
+						"description": "Public route to fetch video metadata (title, price, thumbnail). Does not require authentication."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Access Playback Details (Secure)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{API_URL}}/videos/access/:slug",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"videos",
+								"access",
+								":slug"
+							],
+							"variable": [
+								{
+									"key": "slug",
+									"value": "purchased-video-slug"
+								}
+							]
+						},
+						"description": "Secured route. Verifies purchase/ownership and returns either the YouTube ID or a short-lived stream token/URL for Direct S3 content. Requires authenticated user."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🎁 3. Creator: Bundle Management",
+			"description": "Endpoints for creating and managing video bundles. Requires 'creator' role.",
+			"item": [
+				{
+					"name": "POST Create New Bundle",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Filmmaking Course Bundle\",\n    \"description\": \"A 5-part series on cinematography.\",\n    \"thumbnailUrl\": \"https://placehold.co/600x400/000000/FFFFFF/png?text=Bundle\",\n    \"priceNaira\": \"5000\",\n    \"videoIds\": [\n        \"60d5ec498675681944e05825\",\n        \"60d5ec498675681944e05826\"\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{API_URL}}/bundles",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"bundles"
+							]
+						},
+						"description": "Creates a new bundle. Requires `authorize('creator')`."
+					},
+					"response": []
+				},
+				{
+					"name": "PUT Reorder/Replace Bundle Videos (Critical Fix Applied)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"videoIds\": [\n        \"60d5ec498675681944e05825\",\n        \"60d5ec498675681944e05827\" \n    ]\n}"
+						},
+						"url": {
+							"raw": "{{API_URL}}/bundles/:bundleSlug/videos/reorder",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"bundles",
+								":bundleSlug",
+								"videos",
+								"reorder"
+							],
+							"variable": [
+								{
+									"key": "bundleSlug",
+									"value": "filmmaking-course-bundle-123abc"
+								}
+							]
+						},
+						"description": "Replaces the entire array of video IDs. **Security Note:** This route now performs a critical validation to ensure **all** provided `videoIds` belong to the authenticated creator (Fix for Finding #1, Part 1)."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Public Bundle Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{API_URL}}/bundles/:slug",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"bundles",
+								":slug"
+							],
+							"variable": [
+								{
+									"key": "slug",
+									"value": "sample-bundle-slug"
+								}
+							]
+						},
+						"description": "Public route to fetch bundle metadata and video list. Does not require authentication."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📊 4. Creator: Analytics & Comments",
+			"description": "Routes for managing analytics sessions and viewing comments.",
+			"item": [
+				{
+					"name": "POST Analytics: Start Watch Session (Critical Fix Applied)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"videoId\": \"60d5ec498675681944e05825\"\n}"
+						},
+						"url": {
+							"raw": "{{API_URL}}/videos/analytics/start",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"videos",
+								"analytics",
+								"start"
+							]
+						},
+						"description": "Starts an analytics session for a video. **Security Note:** This route now requires the user to have purchase/legitimate access to the video before a session can be created (Fix for Finding #3)."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Fetch Video Comments (Critical Fix Applied)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{API_URL}}/comments/:videoId",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"comments",
+								":videoId"
+							],
+							"variable": [
+								{
+									"key": "videoId",
+									"value": "60d5ec498675681944e05825"
+								}
+							]
+						},
+						"description": "Retrieves the nested comment tree for a video. **Security Note:** Requires the authenticated user to have purchase/legitimate access to the video (Fix for Finding #6)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "💰 5. Payments & Transactions",
+			"description": "Routes for initiating payments and handling webhooks.",
+			"item": [
+				{
+					"name": "POST Initialize Payment (Video)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"videoId\": \"60d5ec498675681944e05825\",\n    \"currency\": \"NGN\"\n}"
+						},
+						"url": {
+							"raw": "{{API_URL}}/payments/initialize",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"payments",
+								"initialize"
+							]
+						},
+						"description": "Initiates a new payment transaction. **Security Note:** The price is sourced securely from the database, ignoring any client-side price submissions (Anti-Tampering)."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Verify Payment Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{API_URL}}/payments/verify/:ref",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"payments",
+								"verify",
+								":ref"
+							],
+							"variable": [
+								{
+									"key": "ref",
+									"value": "AWA-12345678"
+								}
+							]
+						},
+						"description": "Checks the final transaction status against the payment provider (Paystack/Stripe) using the internal reference."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Webhook - Paystack (DANGER)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"event\": \"charge.success\",\n    \"data\": {\n        \"reference\": \"AWA-12345678\",\n        \"amount\": 50000,\n        \"status\": \"success\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{API_URL}}/payments/webhook/paystack",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"payments",
+								"webhook",
+								"paystack"
+							]
+						},
+						"description": "Endpoint for Paystack to send transaction updates. **Security Note: Requires strict header signature verification (Anti-Fraud). Do not call manually in production.**"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👑 6. Admin & Payouts",
+			"description": "Administrative routes (requires 'superadmin' role).",
+			"item": [
+				{
+					"name": "PUT Admin Approve Payout",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"notes\": \"Funds disbursed successfully via Paystack Transfer.\"\n}"
+						},
+						"url": {
+							"raw": "{{API_URL}}/admin/payouts/:id/approve",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"admin",
+								"payouts",
+								":id",
+								"approve"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "60d5ec498675681944e05827"
+								}
+							]
+						},
+						"description": "Marks a Payout request as 'completed'. Requires `authorize('superadmin')`."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Admin Search Users (ReDoS Fix Applied)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{API_URL}}/admin/users?keyword=john",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"admin",
+								"users"
+							],
+							"query": [
+								{
+									"key": "keyword",
+									"value": "john"
+								}
+							]
+						},
+						"description": "Searches for users by name/email. **Security Note:** Keyword input is now escaped to prevent Regular Expression Denial of Service (ReDoS) attacks (Fix for Finding #5)."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "API_URL",
+			"value": "https://awastream-api-url.onrender.com/api/v1",
+			"description": "The base URL for the AwaStream API server on Render. **REPLACE THIS WITH YOUR LIVE DOMAIN**"
+		}
+	]
+}
