@@ -14,8 +14,10 @@ function escapeRegExp(string) {
 // @route   GET /api/v1/admin/dashboard
 // @access  Private (Superadmin)
 const getAdminDashboard = asyncHandler(async (req, res) => {
+    const totalUsers = await User.countDocuments();
     const totalCreators = await User.countDocuments({ role: 'creator' });
     const totalViewers = await User.countDocuments({ role: 'viewer' });
+    const totalOnboarders = await User.countDocuments({ role: 'onboarder' });
     const totalVideos = await Video.countDocuments();
     
     const grossRevenueAggregation = await Transaction.aggregate([
@@ -42,8 +44,10 @@ const getAdminDashboard = asyncHandler(async (req, res) => {
         .limit(10);
 
     res.status(200).json({
+        totalUsers,
         totalCreators,
         totalViewers,
+        totalOnboarders,
         totalVideos,
         totalGrossRevenueKobo,
         totalPlatformProfitKobo,
@@ -281,16 +285,7 @@ const getAllUsers = asyncHandler(async (req, res) => {
     
     // Build the query object
     const query = { role: { $in: ['creator', 'viewer', 'onboarder'] } }; // Exclude other superadmins
-
-    // if (req.query.keyword) {
-    //     const keyword = { $regex: req.query.keyword, $options: 'i' };
-    //     query.$or = [
-    //         { firstName: keyword },
-    //         { lastName: keyword },
-    //         { userName: keyword },
-    //         { email: keyword },
-    //     ];
-    // }
+    
     if (req.query.keyword) {
         const escapedKeyword = escapeRegExp(req.query.keyword);
         const keyword = { $regex: escapedKeyword, $options: 'i' }; 
