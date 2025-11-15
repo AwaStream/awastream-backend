@@ -4,7 +4,7 @@ const { getAdminDashboard, getCreatorDetails, getAllViewers, approvePayout, getA
 const { getSettings, updateSettings, updateAdminProfile } = require('../controllers/settingsController');
 const { authenticate, authorize } = require('../middleware/authMiddleware');
 
-// All routes in this file require a user to be authenticated and have the 'superadmin' role
+// All routes in this file require a user to be authenticated a,nd have the 'superadmin' role
 router.use(authenticate, authorize('superadmin'));
 
 router.get('/dashboard', getAdminDashboard);
