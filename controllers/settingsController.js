@@ -13,22 +13,34 @@ const getSettings = asyncHandler(async (req, res) => {
     );
     res.status(200).json(settings);
 });
-
 // @desc    Update platform settings
 // @route   PUT /api/v1/admin/settings
 // @access  Private (Superadmin)
 const updateSettings = asyncHandler(async (req, res) => {
-    const { paymentProvider, payoutType, emailProvider } = req.body;
+    // --- !! NEW FIELDS !! ---
+    // Destructure all the *new* fields from the request body
+    const { 
+        incomingPaymentProvider, 
+        payoutProvider, 
+        payoutType, 
+        emailProvider 
+    } = req.body;
+
     const updates = {};
-    if (paymentProvider) updates.paymentProvider = paymentProvider;
+
+    // --- !! NEW LOGIC !! ---
+    // Check for the new fields and add them to the updates object
+    if (incomingPaymentProvider) updates.incomingPaymentProvider = incomingPaymentProvider;
+    if (payoutProvider) updates.payoutProvider = payoutProvider;
     if (payoutType) updates.payoutType = payoutType;
     if (emailProvider) updates.emailProvider = emailProvider;
 
     const settings = await Settings.findOneAndUpdate(
         { singleton: 'main_settings' },
         { $set: updates },
-        { new: true, runValidators: true }
+        { new: true, runValidators: true, upsert: true } // Added upsert just in case
     );
+    
     res.status(200).json(settings);
 });
 
