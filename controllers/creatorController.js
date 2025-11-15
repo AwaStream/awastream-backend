@@ -333,18 +333,35 @@ const requestPayout = asyncHandler(async (req, res) => {
             amountKobo,
             status: 'processing',
         });
-        
         try {
-            const transferResult = await payoutService.initiateTransfer(amountKobo, creator.paystackRecipientCode, payout._id.toString());
-            payout.providerRef = transferResult.transfer_code;
-            await payout.save();
-            res.status(201).json(payout);
-        } catch (error) {
-            payout.status = 'failed';
-            payout.notes = error.message;
-            await payout.save();
-            res.status(400).json({ message: error.message });
-        }
+    // CHANGED: We now pass the full 'creator' object as the second argument
+    // instead of just 'creator.paystackRecipientCode'.
+    // The service adapter will decide which details it needs.
+    const transferResult = await payoutService.initiateTransfer(amountKobo, creator, payout._id.toString());
+    
+    // Save Nomba's reference (or Paystack's transfer_code depending on who was used)
+    payout.providerRef = transferResult.reference || transferResult.transfer_code;
+    payout.status = (transferResult.status === 'SUCCESS' || transferResult.status === 'success') ? 'completed' : 'processing';
+    
+    await payout.save();
+    res.status(201).json(payout);
+} catch (error) {
+     payout.status = 'failed';
+     payout.notes = error.message;
+     await payout.save();
+     res.status(400).json({ message: error.message });
+}
+        // try {
+        //     const transferResult = await payoutService.initiateTransfer(amountKobo, creator.paystackRecipientCode, payout._id.toString());
+        //     payout.providerRef = transferResult.transfer_code;
+        //     await payout.save();
+        //     res.status(201).json(payout);
+        // } catch (error) {
+        //     payout.status = 'failed';
+        //     payout.notes = error.message;
+        //     await payout.save();
+        //     res.status(400).json({ message: error.message });
+        // }
     } else {
         const payout = await Payout.create({
             creator: creatorId,
@@ -357,8 +374,8 @@ const requestPayout = asyncHandler(async (req, res) => {
 
 
 /**
- * @desc    Handles requests for creator profiles, including redirects for old usernames.
- * @route   GET /api/v1/creators/:username
+ * @desc    Handles requests for creator profiles, including redirects for old usernames
+ *  * @route   GET /api/v1/creators/:username
  * @access  Public
  */
 const profileRedirect = asyncHandler(async (req, res, next) => {
