@@ -3,6 +3,7 @@ const router = express.Router();
 const { 
     initializePayment, 
     verifyViewerPayment,
+    getTransferPaymentDetails,
     handlePaystackWebhook,
     handleStripeWebhook,
     handlePaystackTransferWebhook
@@ -11,6 +12,7 @@ const { authenticate } = require('../middleware/authMiddleware');
 
 router.post('/initialize', authenticate, initializePayment);
 router.post('/verify', authenticate, verifyViewerPayment);
+router.post('/get-transfer-details', authenticate, getTransferPaymentDetails);
 
 // --- WEBHOOKS ---
 // These are public but secured by signature verification within the adapters
