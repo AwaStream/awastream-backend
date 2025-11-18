@@ -7,6 +7,9 @@ const User = require('../../models/User');
 const Notification = require('../../models/Notification');
 const { COMMISSION_RATE } = require('../../config/constants');
 
+let bankCache = null;
+let cacheTime = null;
+
 const paystackClient = axios.create({
     baseURL: 'https://api.paystack.co',
     headers: {
@@ -107,8 +110,28 @@ const handleWebhook = async (req) => {
     }
 };
 
+
+const getBankList = async () => {
+    // If we have a cache and it's less than 24 hours old, use it
+    if (bankCache && cacheTime && (new Date() - cacheTime < 24 * 60 * 60 * 1000)) {
+        console.log("[Paystack Bank] Using cached bank list.");
+        return bankCache;
+    }
+    
+    console.log("[Paystack Bank] Fetching new bank list.");
+    const response = await paystackClient.get('/bank'); // paystackClient is already defined in this file
+
+    const banks = response.data.data;
+    bankCache = banks; // Store in cache
+    cacheTime = new Date(); // Set cache time
+
+    return banks;
+};
+
+
 module.exports = { 
     initialize, 
     verify,
     handleWebhook,
+    getBankList
 };
