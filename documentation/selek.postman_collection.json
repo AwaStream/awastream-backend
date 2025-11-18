@@ -1,0 +1,32 @@
+{
+	"info": {
+		"_postman_id": "2b9ad1f3-668a-4025-897c-9fe2cc71d4d3",
+		"name": "selek",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "23657257",
+		"_collection_link": "https://selektionai-team.postman.co/workspace/NaijaTechBro-CookRoom~b58a0031-dd79-47ce-8c15-5eb4aa2b8400/collection/23657257-2b9ad1f3-668a-4025-897c-9fe2cc71d4d3?action=share&source=collection_link&creator=23657257"
+	},
+	"item": [
+		{
+			"name": "Template",
+			"item": [
+				{
+					"name": "Get the List of Templates",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "Create an Agent from Template",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

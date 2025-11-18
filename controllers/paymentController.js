@@ -14,6 +14,7 @@ const {
     handleStripeWebhook: handleStripeWebhookFromGateway 
 } = require('../services/paymentGateway');
 const { handleTransferWebhook } = require('../services/payoutService');
+const nombaAdapter = require('../services/providers/nombaAdapter');
 
 /**
  * @desc     Initialize a payment for a video or bundle
@@ -225,11 +226,26 @@ const handlePaystackTransferWebhook = asyncHandler(async (req, res) => {
     res.sendStatus(200);
 });
 
+// @desc    Handle Nomba Webhooks
+// @route   POST /api/v1/payments/webhook/nomba
+// @access  Public (Protected by Signature)
+const handleNombaWebhook = asyncHandler(async (req, res) => {
+    try {
+        await nombaAdapter.handleWebhook(req);
+        res.status(200).send('Webhook received');
+    } catch (error) {
+        console.error("Nomba Webhook Error:", error.message);
+        // Always return 200 to Nomba so they don't keep retrying if it's just a logic error
+        res.status(200).send('Webhook received with errors'); 
+    }
+});
+
 module.exports = {
     initializePayment,
     verifyViewerPayment,
     getTransferPaymentDetails,
     handlePaystackWebhook,
     handleStripeWebhook,
+    handleNombaWebhook,
     handlePaystackTransferWebhook,
 };
