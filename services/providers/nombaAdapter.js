@@ -353,6 +353,42 @@ const handleWebhook = async (req) => {
     return true;
 };
 
+const createVirtualAccount = async (user) => {
+    try {
+        const config = await getAuthHeaders();
+        
+        // Prepare the payload for a permanent virtual account
+        const payload = {
+            accountRef: `WALLET-${user._id}`, // Unique reference for this user
+            phoneNumber: user.phoneNumber || "", // Optional but good if you have it
+            email: user.email,
+            accountName: `${user.firstName} ${user.lastName}`, // The name that shows up in the bank app
+            currency: "NGN",
+            bvn: "" // Optional: Add user's BVN if you have collected it for higher limits
+        };
+
+        console.log(`[Nomba Wallet] Creating virtual account for ${user.email}...`);
+
+        const response = await axios.post(`${BASE_URL}/virtual-accounts`, payload, config);
+
+        if (response.data.code === '00') {
+            const data = response.data.data;
+            return {
+                bankName: data.bankName,
+                accountName: data.accountName,
+                accountNumber: data.accountNumber,
+                reference: data.accountRef
+            };
+        } else {
+            throw new Error(response.data.description || "Failed to create virtual account");
+        }
+
+    } catch (error) {
+        console.error("Nomba Virtual Account Error:", error.response?.data || error.message);
+        throw new Error(error.response?.data?.description || "Could not create wallet account.");
+    }
+};
+
 
 module.exports = {
     initialize,
@@ -363,4 +399,5 @@ module.exports = {
     getTransferAccount,
     getBankList,
     handleWebhook,
+    createVirtualAccount,
 };
