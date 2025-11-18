@@ -155,67 +155,39 @@ const verify = async (orderReference) => {
 
         console.log(`[Nomba Verify] Verifying Reference: ${orderReference}`);
 
-        // --- ATTEMPT 1: Use the specific Checkout Transaction endpoint ---
-        // This is usually more reliable for checkout flows than the generic account lookup
-        const fetchResponse = await fetch(`${BASE_URL}/checkout/transactions?orderReference=${orderReference}`, {
-            method: 'GET',
-            headers: getHeaders
-        });
+        // --- CORRECTED ENDPOINT (Singular 'transaction') ---
+        // Docs: https://developer.nomba.com/nomba-api-reference/online-checkout/fetch-checkout-transaction
+        const fetchResponse = await fetch(
+            `${BASE_URL}/checkout/transaction?idType=ORDER_REFERENCE&id=${orderReference}`, 
+            {
+                method: 'GET',
+                headers: getHeaders
+            }
+        );
         
         const responseData = await fetchResponse.json();
-        
-        // LOGGING: This will show up in your server logs (Render/Heroku)
         console.log("[Nomba Verify] API Response:", JSON.stringify(responseData, null, 2));
 
-        // Check if we have data
-        if (responseData.code === '00' && responseData.data && responseData.data.results) {
-            const transactions = responseData.data.results;
+        if (responseData.code === '00' && responseData.data) {
+            const data = responseData.data;
             
-            if (transactions.length > 0) {
-                // Find the successful one (in case there are multiple attempts)
-                const successTx = transactions.find(tx => tx.status === 'SUCCESS');
-
-                if (successTx) {
-                    return {
-                        status: 'success',
-                        amount: Math.round(parseFloat(successTx.amount) * 100),
-                        reference: orderReference,
-                        id: successTx.id 
-                    };
-                } else {
-                    console.warn(`[Nomba Verify] Transactions found but none match SUCCESS. Statuses: ${transactions.map(t => t.status).join(', ')}`);
-                    return { status: 'failed' };
-                }
+            // Nomba returns 'true' (string or boolean) for success
+            if (String(data.success) === 'true' || data.message === 'success') {
+                return {
+                    status: 'success',
+                    amount: Math.round(parseFloat(data.order.amount) * 100),
+                    reference: orderReference,
+                    id: data.transactionDetails?.id || orderReference
+                };
+            } else {
+                return { status: 'failed' };
             }
         }
 
-        // --- FALLBACK (Optional): If Attempt 1 returns nothing, try the Account Lookup ---
-        // Only runs if the first specific check didn't find the order
-        console.log("[Nomba Verify] Attempt 1 empty, trying fallback account lookup...");
-        const fallbackResponse = await fetch(`${BASE_URL}/transactions/accounts/single?orderReference=${orderReference}`, {
-            method: 'GET',
-            headers: getHeaders
-        });
-        const fallbackData = await fallbackResponse.json();
-        
-        if (fallbackData.code === '00' && fallbackData.data && fallbackData.data.results && fallbackData.data.results.length > 0) {
-             const transaction = fallbackData.data.results[0];
-             if (transaction.status === 'SUCCESS') {
-                return {
-                    status: 'success',
-                    amount: Math.round(parseFloat(transaction.amount) * 100),
-                    reference: orderReference,
-                    id: transaction.id 
-                };
-             }
-        }
-
-        console.warn(`[Nomba Verify] Final Result: Could not verify payment for ${orderReference}`);
         return { status: 'failed' };
 
     } catch (error) {
         console.error("Nomba Verify Error:", error.message);
-        // We do NOT throw here, we return failed so the controller can handle it gracefully
         return { status: 'failed' }; 
     }
 };
