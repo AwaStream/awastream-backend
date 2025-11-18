@@ -408,13 +408,17 @@ const forgotPassword = asyncHandler(async (req, res) => {
             message: 'If an account with that email exists, a password reset link has been sent.' 
         });
 
-    } catch (error) {
-        // --- BUG 2 FIX: REMOVED logic that cleared the token ---
-        // DO NOT clear the token.
-        
-        res.status(500);
-        throw new Error('Email could not be sent. Please try again later.');
-    }
+} catch (error) { 
+    console.error("EMAIL SENDING FAILED:", error.message); 
+    
+    // Log the full error if it's complex
+    if (error.response) {
+        console.error("Mailjet Error Body:", error.response.data);
+    }
+
+    res.status(500);
+    throw new Error('Email could not be sent. Please check server configuration.');
+}
 });
 
 const resetPassword = asyncHandler(async (req, res) => {

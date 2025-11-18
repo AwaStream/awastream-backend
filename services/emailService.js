@@ -4,7 +4,7 @@ const handlebars = require('handlebars');
 const fs = require('fs');
 const path = require('path');
 const Settings = require('../models/Settings');
-const mailjet = require('node-mailjet')
+const Mailjet = require('node-mailjet')
 
 // --- Helper function to render Handlebars templates ---
 const renderTemplate = (templateName, data) => {
@@ -71,8 +71,8 @@ const sendEmailWithNodemailer = async (options) => {
 
 // --- 🚨 Service 3: Mailjet (API-based) ---
 const sendEmailWithMailjet = async (options) => {
-    // Requires MAILJET_API_KEY and MAILJET_SECRET_KEY in environment variables
-    const mailjetClient = mailjet.connect(
+    try {
+    const mailjetClient = Mailjet.apiConnect(
         process.env.MAILJET_API_KEY, 
         process.env.MAILJET_SECRET_KEY
     );
@@ -106,9 +106,22 @@ const sendEmailWithMailjet = async (options) => {
         ],
     });
     
-    // Check for success (Mailjet returns a 200/202, but errors can be in the body)
+    // Check for success (returns a 200/202, but errors can be in the body)
     if (result.response.status !== 200 && result.response.status !== 202) {
          throw new Error(`Mailjet send failed with status ${result.response.status}`);
+    }
+
+    } catch (error) {
+        // 🚨 This will catch 401 (Bad API Key) or 400 (Bad Request) errors
+        console.error("MAILJET API ERROR:", error.message);
+        
+        // Log the detailed error from Mailjet
+        if (error.response && error.response.data) {
+            console.error("MAILJET ERROR DETAILS:", JSON.stringify(error.response.data, null, 2));
+        }
+        
+        // Re-throw the error so the controller can see it
+        throw error;
     }
 };
 

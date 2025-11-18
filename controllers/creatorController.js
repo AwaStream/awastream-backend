@@ -279,13 +279,13 @@ const getCreatorTransactions = asyncHandler(async (req, res) => {
     res.status(200).json(transactions);
 });
 
-
 const requestPayout = asyncHandler(async (req, res) => {
     const { amountKobo } = req.body;
     const creatorId = new mongoose.Types.ObjectId(req.user.id);
 
     const settings = await Settings.findOne({ singleton: 'main_settings' });
     const payoutMode = settings?.payoutType || 'manual';
+    const payoutProviderKey = settings?.payoutProvider || 'nomba'; // Default to Nomba
 
     if (!amountKobo || amountKobo <= 0) {
         res.status(400);
@@ -298,6 +298,7 @@ const requestPayout = asyncHandler(async (req, res) => {
         throw new Error('Please complete your bank details in your profile before requesting a payout.');
     }
 
+    // --- !! THIS IS THE MISSING LOGIC THAT CAUSED THE ERROR !! ---
     const payoutAggregation = await Payout.aggregate([
         { $match: { creator: creatorId, status: { $in: ['completed', 'processing', 'pending'] } } },
         { $group: { _id: null, total: { $sum: '$amountKobo' } } }
@@ -314,51 +315,51 @@ const requestPayout = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error('Payout request exceeds your available balance.');
     }
+    // --- !! END OF MISSING LOGIC !! ---
 
     if (payoutMode === 'automatic') {
-        try {
-            if (!creator.paystackRecipientCode) {
-                await payoutService.verifyBankAccount(creator.payoutAccountNumber, creator.payoutBankName);
-                const recipientCode = await payoutService.createTransferRecipient(creator);
-                creator.paystackRecipientCode = recipientCode;
-                creator = await creator.save();
-            }
-        } catch (error) {
-            res.status(400);
-            throw new Error("Your saved bank details are invalid. Please update them in your profile and try again.");
-        }
-
         const payout = await Payout.create({
             creator: creatorId,
             amountKobo,
-            status: 'processing',
+            status: 'processing', // Initial status before transfer attempt
+            provider: payoutProviderKey,
         });
         
         try {
-            const transferResult = await payoutService.initiateTransfer(amountKobo, creator.paystackRecipientCode, payout._id.toString());
-            payout.providerRef = transferResult.transfer_code;
+            // Initiate the transfer using the full creator object
+            // The payoutService (and nombaAdapter) will handle the bank code lookup.
+            const transferResult = await payoutService.initiateTransfer(amountKobo, creator, payout._id.toString());
+            
+            payout.providerRef = transferResult.reference || transferResult.transfer_code;
+            // Check for Nomba's success status
+            payout.status = (transferResult.status === 'SUCCESS' || transferResult.status === 'success' || transferResult.status === 'completed') ? 'completed' : 'processing';
+            
             await payout.save();
             res.status(201).json(payout);
+
         } catch (error) {
+            console.error(`Payout Failed for Payout ID ${payout._id}:`, error.message);
             payout.status = 'failed';
-            payout.notes = error.message;
+            payout.notes = `Transfer failed: ${error.message}`;
             await payout.save();
-            res.status(400).json({ message: error.message });
+            
+            res.status(400).json({ message: error.message || 'Payment provider transfer failed.' });
         }
     } else {
+        // Manual Payout Logic
         const payout = await Payout.create({
             creator: creatorId,
             amountKobo,
             status: 'pending',
+            provider: payoutProviderKey,
         });
         res.status(201).json(payout);
     }
 });
 
-
 /**
- * @desc    Handles requests for creator profiles, including redirects for old usernames.
- * @route   GET /api/v1/creators/:username
+ * @desc    Handles requests for creator profiles, including redirects for old usernames
+ *  * @route   GET /api/v1/creators/:username
  * @access  Public
  */
 const profileRedirect = asyncHandler(async (req, res, next) => {

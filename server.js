@@ -50,7 +50,7 @@ const startServer = async () => {
     'http://localhost:5173',
     'https://awastream.onrender.com',
     'https://awastream.com',
-    'https://www.awastream.com', // <-- ADD THIS
+    'https://www.awastream.com',
     process.env.FRONTEND_URL
 ];
 

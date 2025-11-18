@@ -1,0 +1,2009 @@
+{
+	"info": {
+		"_postman_id": "f5b6f3c1-0c5a-4e2b-8a8b-1b2c4d9e0f1a",
+		"name": "AwaStream API",
+		"description": "Full API collection for the AwaStream platform. \n\n**Authentication Note:**\nThis API uses secure, `httpOnly` cookies (`accessToken` and `refreshToken`) for session management. \n\n1.  First, run the **Auth > Login User** request. \n2.  If your Postman client has the cookie jar enabled, it will automatically save the cookies returned by the login endpoint.\n3.  All other authenticated routes (marked with 🔒) will then work automatically.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"description": "User registration, login, and session management.",
+			"item": [
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Test\",\n    \"lastName\": \"User\",\n    \"userName\": \"testuser\",\n    \"email\": \"testuser@example.com\",\n    \"password\": \"Password123!\",\n    \"intent\": \"viewer\",\n    \"referralCode\": \"onboarder-username\",\n    \"redirectPath\": \"/library\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"register"
+							]
+						},
+						"description": "@desc    Register a new user (viewer or creator)."
+					},
+					"response": []
+				},
+				{
+					"name": "Login User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"testuser@example.com\",\n    \"password\": \"Password123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "@desc    Authenticate a user and set session cookies."
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Email",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"token\": \"<token-from-email-link>\",\n    \"redirectUrl\": \"/library\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/verify-email",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"verify-email"
+							]
+						},
+						"description": "@desc    Verify a user's email address using the token."
+					},
+					"response": []
+				},
+				{
+					"name": "Resend Verification Email",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"unverified-user@example.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/resend-verification",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"resend-verification"
+							]
+						},
+						"description": "@desc    Resend the verification email to an unverified user."
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"testuser@example.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/forgot-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"forgot-password"
+							]
+						},
+						"description": "@desc    Initiate the password reset flow."
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"password\": \"NewSecurePassword123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/reset-password?token=<token-from-email>",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"reset-password"
+							],
+							"query": [
+								{
+									"key": "token",
+									"value": "<token-from-email>"
+								}
+							]
+						},
+						"description": "@desc    Set a new password using the reset token."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 Change Password",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"currentPassword\": \"Password123!\",\n    \"newPassword\": \"NewSecurePassword123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/change-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"change-password"
+							]
+						},
+						"description": "@desc    Change the password for a logged-in user."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 Get Me (Profile)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"me"
+							]
+						},
+						"description": "@desc    Get the profile of the currently authenticated user."
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Access Token",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/refresh-token",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"refresh-token"
+							]
+						},
+						"description": "@desc    Uses the `refreshToken` cookie to get a new `accessToken`."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 Logout User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/logout",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"logout"
+							]
+						},
+						"description": "@desc    Clear the authentication cookies."
+					},
+					"response": []
+				},
+				{
+					"name": "Google Auth Start",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/google?state=/my-redirect-path",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"google"
+							],
+							"query": [
+								{
+									"key": "state",
+									"value": "/my-redirect-path"
+								}
+							]
+						},
+						"description": "@desc    Initiate Google OAuth flow. (Use in a browser)."
+					},
+					"response": []
+				},
+				{
+					"name": "Google Auth Callback",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/google/callback",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"google",
+								"callback"
+							]
+						},
+						"description": "@desc    Callback URL for Google to hit after successful auth. Sets cookies."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Videos",
+			"description": "Endpoints for creating, managing, and viewing video content.",
+			"item": [
+				{
+					"name": "🔒 [Creator] Create Video",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sourceType\": \"youtube\",\n    \"youtubeUrl\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\",\n    \"priceNaira\": 500,\n    \"trailerSourceType\": \"none\",\n    \"trailerSourceId\": null\n}\n\n// OR for Direct Upload\n\n{\n    \"sourceType\": \"direct\",\n    \"s3Key\": \"creator-id/videos/my-video-file.mp4\",\n    \"title\": \"My Awesome Direct Video\",\n    \"description\": \"A description of my video.\",\n    \"thumbnailUrl\": \"https://my-cdn.com/thumbnail.jpg\",\n    \"priceNaira\": 1000,\n    \"trailerSourceType\": \"youtube\",\n    \"trailerSourceId\": \"trailer-video-id\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/videos",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos"
+							]
+						},
+						"description": "@desc    Monetize a new video from either YouTube or a direct upload."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Get All My Videos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/videos",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos"
+							]
+						},
+						"description": "@desc    Get all videos for the logged-in creator"
+					},
+					"response": []
+				},
+				{
+					"name": "[Public] Get Video By Slug",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/videos/my-awesome-video-slug-1234",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"my-awesome-video-slug-1234"
+							]
+						},
+						"description": "@desc    Get public details for a single video."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Update Video",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"My Updated Video Title\",\n    \"description\": \"New description.\",\n    \"priceNaira\": 1200,\n    \"trailerSourceType\": \"direct\",\n    \"trailerSourceId\": \"creator-id/trailers/new-trailer.mp4\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/videos/my-awesome-video-slug-1234",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"my-awesome-video-slug-1234"
+							]
+						},
+						"description": "@desc    Update video details (title, price, trailer)."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Delete Video",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/videos/my-awesome-video-slug-1234",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"my-awesome-video-slug-1234"
+							]
+						},
+						"description": "@desc    Delete a monetized video and its associated data."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Generate S3 Upload URL",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"filename\": \"my-trailer-video.mp4\",\n    \"filetype\": \"video/mp4\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/videos/generate-upload-url",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"generate-upload-url"
+							]
+						},
+						"description": "@desc    Generate a presigned URL for direct S3 upload."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Get Video Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/videos/my-awesome-video-slug-1234/stats",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"my-awesome-video-slug-1234",
+								"stats"
+							]
+						},
+						"description": "@desc    Get private details and stats for a single creator video."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Get Video Transactions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/videos/my-awesome-video-slug-1234/transactions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"my-awesome-video-slug-1234",
+								"transactions"
+							]
+						},
+						"description": "@desc    Get transaction history for a single video."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Get Daily Performance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/videos/my-awesome-video-slug-1234/daily-performance",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"my-awesome-video-slug-1234",
+								"daily-performance"
+							]
+						},
+						"description": "@desc    Get daily views and sales for the last 30 days."
+					},
+					"response": []
+				},
+				{
+					"name": "[Public] Get Trailer Stream",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/videos/trailer/my-awesome-video-slug-1234",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"trailer",
+								"my-awesome-video-slug-1234"
+							]
+						},
+						"description": "@desc    Stream a public trailer for a 'direct' video."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Bundles",
+			"description": "Endpoints for creating and managing video bundles.",
+			"item": [
+				{
+					"name": "🔒 [Creator] Create Bundle",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"My Awesome Video Bundle\",\n    \"description\": \"All my best videos in one place!\",\n    \"thumbnailUrl\": \"https://my-cdn.com/bundle-thumb.jpg\",\n    \"priceNaira\": 2500,\n    \"videoIds\": [\n        \"60d5f1b2c3a4b5d6e7f8g9h0\",\n        \"60d5f1b2c3a4b5d6e7f8g9h1\"\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/bundles",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"bundles"
+							]
+						},
+						"description": "@desc    Create a new video bundle."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Get All My Bundles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/bundles",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"bundles"
+							]
+						},
+						"description": "@desc    Get all bundles for the logged-in creator."
+					},
+					"response": []
+				},
+				{
+					"name": "[Public] Get Bundle By Slug",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/bundles/my-awesome-bundle-slug-5678",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"bundles",
+								"my-awesome-bundle-slug-5678"
+							]
+						},
+						"description": "@desc    Get a single bundle by its slug (public)."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Update Bundle",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Bundle Title\",\n    \"description\": \"New description.\",\n    \"priceNaira\": 2700\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/bundles/my-awesome-bundle-slug-5678",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"bundles",
+								"my-awesome-bundle-slug-5678"
+							]
+						},
+						"description": "@desc    Update a bundle's details."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Delete Bundle",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/bundles/my-awesome-bundle-slug-5678",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"bundles",
+								"my-awesome-bundle-slug-5678"
+							]
+						},
+						"description": "@desc    Delete a bundle."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Reorder Bundle Videos",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"videoIds\": [\n        \"60d5f1b2c3a4b5d6e7f8g9h1\",\n        \"60d5f1b2c3a4b5d6e7f8g9h0\"\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/bundles/my-awesome-bundle-slug-5678/videos/reorder",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"bundles",
+								"my-awesome-bundle-slug-5678",
+								"videos",
+								"reorder"
+							]
+						},
+						"description": "@desc    Update the order of videos within a bundle."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Add Video to Bundle",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/bundles/my-awesome-bundle-slug-5678/videos/60d5f1b2c3a4b5d6e7f8g9h2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"bundles",
+								"my-awesome-bundle-slug-5678",
+								"videos",
+								"60d5f1b2c3a4b5d6e7f8g9h2"
+							]
+						},
+						"description": "@desc    Add a single video to a bundle."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Remove Video from Bundle",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/bundles/my-awesome-bundle-slug-5678/videos/60d5f1b2c3a4b5d6e7f8g9h2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"bundles",
+								"my-awesome-bundle-slug-5678",
+								"videos",
+								"60d5f1b2c3a4b5d6e7f8g9h2"
+							]
+						},
+						"description": "@desc    Remove a single video from a bundle."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Access & Playback",
+			"description": "Endpoints for verifying a user's access to content.",
+			"item": [
+				{
+					"name": "🔒 [User] Get Playback Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/videos/access/my-awesome-video-slug-1234",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"access",
+								"my-awesome-video-slug-1234"
+							]
+						},
+						"description": "@desc    Get the playback details (token or ID) for a video after verifying purchase."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [User] Generate Secure Token (Deprecated?)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"slug\": \"my-awesome-video-slug-1234\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/access/generate-token",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"access",
+								"generate-token"
+							]
+						},
+						"description": "@desc    Generate a short-lived access token for a video after verifying the user's rights. (Seems to duplicate logic from /videos/access/:slug)"
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [User] Stream Direct Video",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/videos/stream/my-direct-upload-slug-4321?token=<short-lived-token>",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"stream",
+								"my-direct-upload-slug-4321"
+							],
+							"query": [
+								{
+									"key": "token",
+									"value": "<short-lived-token>"
+								}
+							]
+						},
+						"description": "@desc    Stream a directly monetized video from S3, secured by a short-lived token. (This URL is returned by `generate-token` or `/videos/access/:slug`)."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [User] Check Access",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/access/check/video/my-awesome-video-slug-1234",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"access",
+								"check",
+								"video",
+								"my-awesome-video-slug-1234"
+							]
+						},
+						"description": "@desc    Check if a logged-in user has access to a given product (video or bundle)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Analytics (Watch Tracking)",
+			"description": "Endpoints for tracking user watch behavior.",
+			"item": [
+				{
+					"name": "🔒 [User] Start Watch Session",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"videoId\": \"60d5f1b2c3a4b5d6e7f8g9h0\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/videos/analytics/start",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"analytics",
+								"start"
+							]
+						},
+						"description": "@desc    A user has started playing a video."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [User] Send Watch Heartbeat",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sessionId\": \"<session-id-from-start>\",\n    \"currentTime\": 120.5\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/videos/analytics/heartbeat",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"analytics",
+								"heartbeat"
+							]
+						},
+						"description": "@desc    A user sends a \"ping\" to show they are still watching."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [User] End Watch Session",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "text/plain",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sessionId\": \"<session-id-from-start>\",\n    \"currentTime\": 360.2\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/videos/analytics/end",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"videos",
+								"analytics",
+								"end"
+							]
+						},
+						"description": "@desc    A user has stopped watching (handles JSON or text/plain from sendBeacon)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Payments",
+			"description": "Endpoints for handling payment initialization and webhooks.",
+			"item": [
+				{
+					"name": "🔒 [User] Initialize Payment",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "// For a single video\n{\n    \"videoId\": \"60d5f1b2c3a4b5d6e7f8g9h0\"\n}\n\n// For a bundle\n{\n    \"bundleId\": \"60d5f1b2c3a4b5d6e7f8g9h1\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/payments/initialize",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"payments",
+								"initialize"
+							]
+						},
+						"description": "@desc    Initialize a payment for a video or bundle."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [User] Verify Viewer Payment",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "// For Paystack\n{\n    \"provider\": \"paystack\",\n    \"reference\": \"<paystack-ref-from-url>\",\n    \"slug\": \"my-awesome-video-slug-1234\",\n    \"productType\": \"Video\"\n}\n\n// For Stripe\n{\n    \"provider\": \"stripe\",\n    \"sessionId\": \"<stripe-session-id-from-url>\",\n    \"slug\": \"my-awesome-bundle-slug-5678\",\n    \"productType\": \"Bundle\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/payments/verify",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"payments",
+								"verify"
+							]
+						},
+						"description": "@desc     Verify a payment from the frontend after a redirect."
+					},
+					"response": []
+				},
+				{
+					"name": "[Webhook] Paystack Payments",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"event\": \"charge.success\",\n    \"data\": {\n        \"reference\": \"...\",\n        \"status\": \"success\"\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/payments/webhook/paystack",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"payments",
+								"webhook",
+								"paystack"
+							]
+						},
+						"description": "@desc    Webhook endpoint for Paystack payment events."
+					},
+					"response": []
+				},
+				{
+					"name": "[Webhook] Paystack Transfers",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"event\": \"transfer.success\",\n    \"data\": {\n        \"reference\": \"...\",\n        \"status\": \"success\"\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/payments/webhook/paystack-transfer",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"payments",
+								"webhook",
+								"paystack-transfer"
+							]
+						},
+						"description": "@desc    Webhook endpoint for Paystack payout/transfer events."
+					},
+					"response": []
+				},
+				{
+					"name": "[Webhook] Stripe Payments",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "stripe-signature",
+								"value": "<stripe-webhook-signature>",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"checkout.session.completed\",\n    \"data\": {\n        \"object\": {\n            \"id\": \"cs_...\",\n            \"metadata\": {\n                \"internalRef\": \"...\"\n            }\n        }\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/payments/webhook/stripe",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"payments",
+								"webhook",
+								"stripe"
+							]
+						},
+						"description": "@desc    Webhook endpoint for Stripe payment events. (Requires raw body)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Creator Dashboard",
+			"description": "Endpoints for the private creator dashboard.",
+			"item": [
+				{
+					"name": "🔒 [Creator] Get Dashboard Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/creator/dashboard",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"creator",
+								"dashboard"
+							]
+						},
+						"description": "@desc    Get main statistics for the creator dashboard."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Get Creator Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/creator/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"creator",
+								"profile"
+							]
+						},
+						"description": "@desc    Get the creator's full profile, including private payout details."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Update Creator Profile",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Updated\",\n    \"lastName\": \"Creator\",\n    \"userName\": \"new-username\",\n    \"bio\": \"My updated creator bio.\",\n    \"websiteUrl\": \"https://new-website.com\",\n    \"twitterUrl\": \"https://twitter.com/new-handle\",\n    \"youtubeUrl\": \"\",\n    \"avatarUrl\": \"https://my-cdn.com/new-avatar.jpg\",\n    \"payoutBankName\": \"123456\",\n    \"payoutAccountNumber\": \"0123456789\",\n    \"payoutAccountName\": \"Updated Creator\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/creator/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"creator",
+								"profile"
+							]
+						},
+						"description": "@desc    Update the creator's public and private profile details."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Get Creator Analytics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/creator/analytics?range=30d",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"creator",
+								"analytics"
+							],
+							"query": [
+								{
+									"key": "range",
+									"value": "30d",
+									"description": "(7d, 30d, 90d, all)"
+								}
+							]
+						},
+						"description": "@desc    Get comprehensive analytics for a creator (charts, top content)."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Request Payout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amountKobo\": 500000\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/creator/payouts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"creator",
+								"payouts"
+							]
+						},
+						"description": "@desc    Request a payout of the available balance."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Get Payout History",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/creator/payouts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"creator",
+								"payouts"
+							]
+						},
+						"description": "@desc    Get a list of all past and pending payouts for the creator."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Creator] Get Transaction History",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/creator/transactions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"creator",
+								"transactions"
+							]
+						},
+						"description": "@desc    Get a list of all successful sales transactions."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Creator (Public)",
+			"description": "Public-facing creator profile pages.",
+			"item": [
+				{
+					"name": "[Public] Get Public Creator Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/creators/creator-username",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"creators",
+								"creator-username"
+							]
+						},
+						"description": "@desc    Get a public creator profile and their videos. Handles redirects for old usernames."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Viewer",
+			"description": "Endpoints for the viewer's experience.",
+			"item": [
+				{
+					"name": "🔒 [Viewer] Get My Library",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/viewer/library",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"viewer",
+								"library"
+							]
+						},
+						"description": "@desc    Get all purchased videos, bundles, and suggestions."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Onboarder Dashboard",
+			"description": "Endpoints for the private onboarder dashboard.",
+			"item": [
+				{
+					"name": "🔒 [Onboarder] Get Dashboard Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/onboarder/dashboard",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"onboarder",
+								"dashboard"
+							]
+						},
+						"description": "@desc    Get dashboard metrics for the logged-in onboarder."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Comments",
+			"description": "Endpoints for video comment threads.",
+			"item": [
+				{
+					"name": "🔒 [User] Get Video Comments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/comments/60d5f1b2c3a4b5d6e7f8g9h0",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"comments",
+								"60d5f1b2c3a4b5d6e7f8g9h0"
+							]
+						},
+						"description": "@desc    Get all comments for a video, nested in a tree structure."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [User] Create Comment",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "// Top-level comment\n{\n    \"text\": \"This is an awesome video!\"\n}\n\n// Reply to another comment\n{\n    \"text\": \"I agree!\",\n    \"parentId\": \"60d5f1b2c3a4b5d6e7f8g9h1\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/comments/60d5f1b2c3a4b5d6e7f8g9h0",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"comments",
+								"60d5f1b2c3a4b5d6e7f8g9h0"
+							]
+						},
+						"description": "@desc    Create a new comment or reply. User must have access to the video."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [User/Creator] Delete Comment",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/comments/60d5f1b2c3a4b5d6e7f8g9h1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"comments",
+								"60d5f1b2c3a4b5d6e7f8g9h1"
+							]
+						},
+						"description": "@desc    Delete a comment. (Allowed by comment owner or video creator)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Notifications",
+			"description": "Endpoints for managing in-app notifications.",
+			"item": [
+				{
+					"name": "🔒 [User] Get My Notifications",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/notifications",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"notifications"
+							]
+						},
+						"description": "@desc    Get the user's latest notifications and unread count."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [User] Mark All as Read",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/notifications/read-all",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"notifications",
+								"read-all"
+							]
+						},
+						"description": "@desc    Mark all of the user's notifications as read."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [User] Mark One as Read",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/notifications/60d5f1b2c3a4b5d6e7f8g9h0/read",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"notifications",
+								"60d5f1b2c3a4b5d6e7f8g9h0",
+								"read"
+							]
+						},
+						"description": "@desc    Mark a single notification as read."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Admin",
+			"description": "Superadmin routes for platform management.",
+			"item": [
+				{
+					"name": "🔒 [Admin] Get Admin Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/dashboard",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"dashboard"
+							]
+						},
+						"description": "@desc    Get platform-wide statistics for the admin dashboard"
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Admin] Get All Users (Paginated)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/users?pageNumber=1&keyword=test",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"users"
+							],
+							"query": [
+								{
+									"key": "pageNumber",
+									"value": "1"
+								},
+								{
+									"key": "keyword",
+									"value": "test"
+								}
+							]
+						},
+						"description": "@desc    Get a paginated list of all users (creators, viewers, onboarders)."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Admin] Update User Status",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"suspended\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/users/60d5f1b2c3a4b5d6e7f8g9h0/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"users",
+								"60d5f1b2c3a4b5d6e7f8g9h0",
+								"status"
+							]
+						},
+						"description": "@desc    Update a user's status (active, inactive, suspended)."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Admin] Update User Role",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"role\": \"onboarder\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/users/60d5f1b2c3a4b5d6e7f8g9h0/role",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"users",
+								"60d5f1b2c3a4b5d6e7f8g9h0",
+								"role"
+							]
+						},
+						"description": "@desc    Update a user's role (e.g., promote to 'onboarder')."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Admin] Get All Viewers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/viewers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"viewers"
+							]
+						},
+						"description": "@desc    Get a list of all viewers and their purchase history stats."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Admin] Get Creator Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/creators/60d5f1b2c3a4b5d6e7f8g9h0/details",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"creators",
+								"60d5f1b2c3a4b5d6e7f8g9h0",
+								"details"
+							]
+						},
+						"description": "@desc    Get detailed analytics for a single creator."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Admin] Get All Onboarders",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/onboarders",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"onboarders"
+							]
+						},
+						"description": "@desc    Get all users with the 'onboarder' role."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Admin] Get Onboarder Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/onboarders/60d5f1b2c3a4b5d6e7f8g9h0",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"onboarders",
+								"60d5f1b2c3a4b5d6e7f8g9h0"
+							]
+						},
+						"description": "@desc    Get details and referral stats for a single onboarder."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Admin] Get Payouts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/payouts?status=pending",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"payouts"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "pending"
+								}
+							]
+						},
+						"description": "@desc    Get all payouts, filterable by status (pending, completed, rejected)."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Admin] Approve Payout",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"notes\": \"Manually approved and paid via bank transfer.\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/payouts/60d5f1b2c3a4b5d6e7f8g9h0/approve",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"payouts",
+								"60d5f1b2c3a4b5d6e7f8g9h0",
+								"approve"
+							]
+						},
+						"description": "@desc    Approve a pending payout (for manual payout mode)."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Admin] Reject Payout",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reason\": \"Bank account details are incorrect.\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/payouts/60d5f1b2c3a4b5d6e7f8g9h0/reject",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"payouts",
+								"60d5f1b2c3a4b5d6e7f8g9h0",
+								"reject"
+							]
+						},
+						"description": "@desc    Reject a pending payout."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Admin] Get Settings",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/settings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"settings"
+							]
+						},
+						"description": "@desc    Get platform settings (payment provider, payout type)."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Admin] Update Settings",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"paymentProvider\": \"stripe\",\n    \"payoutType\": \"automatic\",\n    \"emailProvider\": \"sendgrid\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/settings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"settings"
+							]
+						},
+						"description": "@desc    Update platform settings."
+					},
+					"response": []
+				},
+				{
+					"name": "🔒 [Admin] Update Admin Profile",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Admin\",\n    \"lastName\": \"User\",\n    \"userName\": \"admin\",\n    \"email\": \"admin@awastream.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"profile"
+							]
+						},
+						"description": "@desc    Update the admin's own profile details."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Utils",
+			"description": "Utility endpoints.",
+			"item": [
+				{
+					"name": "[Public] Get Bank List",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/utils/banks",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"utils",
+								"banks"
+							]
+						},
+						"description": "@desc    Get list of Nigerian banks from Paystack (cached)."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5001",
+			"type": "string"
+		}
+	]
+}
