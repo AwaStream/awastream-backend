@@ -51,7 +51,9 @@ const handleStripeWebhook = (req) => {
     return providers.stripe.handleWebhook(req);
 };
 
-// TODO: Add handleNombaWebhook when we are ready
+const handleNombaWebhook = async (req) => {
+    return nombaAdapter.handleWebhook(req);
+};
 
 module.exports = { 
     initializePayment, 
@@ -59,5 +61,6 @@ module.exports = {
     getActiveIncomingProvider, // Expose this for the controller
     handlePaystackWebhook,
     handleStripeWebhook,
+    handleNombaWebhook,
     getTransferAccount: nomba.getTransferAccount,
 };

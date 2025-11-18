@@ -38,6 +38,7 @@ const TransactionSchema = new mongoose.Schema({
     paymentProvider: {
         type: String,
         enum: ['paystack', 'nomba', 'stripe', 'flutterwave'],
+        default: 'nomba',
         required: true,
     },
 }, { timestamps: true });
