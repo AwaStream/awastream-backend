@@ -149,6 +149,13 @@ const createTransferRecipient = async (creator) => {
     return adapter.createTransferRecipient(creator);
 };
 
+const getBankList = async () => {
+    const adapter = await getActivePayoutAdapter();
+    if (!adapter.getBankList) {
+        throw new Error("Active payout provider does not support fetching a bank list.");
+    }
+    return adapter.getBankList();
+};
 // Unified transfer initiation
 // NOTE: We added 'creator' parameter because Nomba needs the raw bank details again, 
 // whereas Paystack only needed the recipientCode.
@@ -171,5 +178,6 @@ module.exports = {
     verifyBankAccount,
     createTransferRecipient,
     initiateTransfer,
+    getBankList,
     // handleTransferWebhook // Keep your existing Paystack one for now, we can add Nomba's later
 };
