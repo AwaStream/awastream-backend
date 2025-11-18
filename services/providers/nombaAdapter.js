@@ -277,6 +277,54 @@ const getTransferAccount = async (orderReference) => {
     }
 };
 
+// const initiateTransfer = async (amountKobo, recipientCode, payoutId, creatorDetails) => {
+//     try {
+//         const config = await getAuthHeaders();
+        
+//         // 1. Get the bank list
+//         const bankList = await getBankList(); 
+        
+//         // 2. Find the matching bank code
+//         const creatorBankName = creatorDetails.payoutBankName.toUpperCase();
+//         const matchingBank = bankList.find(bank => bank.name === creatorBankName);
+
+//         if (!matchingBank) {
+//             throw new Error(`Bank not found or name mismatch for: ${creatorDetails.payoutBankName}`);
+//         }
+//         // 3. Use the correct code
+//         const bankCodeToSend = matchingBank.code;
+
+//         // Nomba prefers amounts as strings with 2 decimal places (e.g., "100.00")
+//         const amountNaira = (amountKobo / 100).toFixed(2);
+
+//         const payload = {
+//             amount: amountNaira,
+//             accountNumber: creatorDetails.payoutAccountNumber,
+//             accountName: creatorDetails.payoutAccountName,
+//             bankCode: bankCodeToSend, // <-- Using the correct code
+//             merchantTxRef: `PAYOUT-${payoutId}`,
+//             senderName: "AwaStream Inc",
+//             narration: `Payout for AwaStream Sales`
+//         };
+
+//         const response = await axios.post(`${BASE_URL}/transfers/bank`, payload, config);
+
+//         if (response.data.code === '00') {
+//              return {
+//                 reference: response.data.data.meta.rrn || response.data.data.id,
+//                 status: response.data.data.status,
+//                 gateway_id: response.data.data.id
+//             };
+//         } else {
+//              throw new Error(response.data.description || "Transfer declined");
+//         }
+//     } catch (error) {
+//         console.error("Nomba Transfer Error:", error.response?.data || error.message);
+//         throw new Error(error.response?.data?.description || error.message || "Nomba failed to initiate transfer.");
+//     }
+// };
+
+
 const initiateTransfer = async (amountKobo, recipientCode, payoutId, creatorDetails) => {
     try {
         const config = await getAuthHeaders();
@@ -285,10 +333,12 @@ const initiateTransfer = async (amountKobo, recipientCode, payoutId, creatorDeta
         const bankList = await getBankList(); 
         
         // 2. Find the matching bank code
+        // NOTE: Assuming the previous frontend fix worked, this is now a bank name (e.g., "PAYCOM (OPAY)")
         const creatorBankName = creatorDetails.payoutBankName.toUpperCase();
-        const matchingBank = bankList.find(bank => bank.name === creatorBankName);
-
+        const matchingBank = bankList.find(bank => bank.name.toUpperCase() === creatorBankName); // Ensure case-insensitive match
+        
         if (!matchingBank) {
+            // This should no longer happen if the frontend fix was applied and saved
             throw new Error(`Bank not found or name mismatch for: ${creatorDetails.payoutBankName}`);
         }
         // 3. Use the correct code
@@ -307,22 +357,39 @@ const initiateTransfer = async (amountKobo, recipientCode, payoutId, creatorDeta
             narration: `Payout for AwaStream Sales`
         };
 
+        // Transfer Endpoint: POST /v1/transfers/bank
         const response = await axios.post(`${BASE_URL}/transfers/bank`, payload, config);
 
-        if (response.data.code === '00') {
-             return {
-                reference: response.data.data.meta.rrn || response.data.data.id,
-                status: response.data.data.status,
+        if (response.data.code === '00' && response.data.data) {
+            const nombaStatus = response.data.data.status;
+            let internalStatus = 'failed';
+            
+            // --- FIX: Map Nomba's Status to Internal Status ---
+            if (nombaStatus === 'SUCCESS') {
+                internalStatus = 'successful';
+            } else if (nombaStatus === 'PROCESSING' || nombaStatus === 'PENDING') {
+                // This is the status you were seeing. The transfer is initiated but not yet settled.
+                internalStatus = 'pending';
+            }
+            // --- END FIX ---
+
+            return {
+                reference: response.data.data.meta?.rrn || response.data.data.id,
+                // Return the correctly mapped internal status
+                status: internalStatus, 
                 gateway_id: response.data.data.id
             };
         } else {
-             throw new Error(response.data.description || "Transfer declined");
+            // If Nomba returns a non-00 code, it's a hard decline.
+            throw new Error(response.data.description || "Transfer declined by Nomba.");
         }
     } catch (error) {
         console.error("Nomba Transfer Error:", error.response?.data || error.message);
+        // The controller will catch this specific error and mark the payout as FAILED.
         throw new Error(error.response?.data?.description || error.message || "Nomba failed to initiate transfer.");
     }
 };
+
 
 const handleWebhook = async (req) => {
     const secret = process.env.NOMBA_CLIENT_SECRET; // Nomba uses Client Secret for signature
