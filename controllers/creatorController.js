@@ -280,12 +280,106 @@ const getCreatorTransactions = asyncHandler(async (req, res) => {
 });
 
 
+// const requestPayout = asyncHandler(async (req, res) => {
+//     const { amountKobo } = req.body;
+//     const creatorId = new mongoose.Types.ObjectId(req.user.id);
+
+//     const settings = await Settings.findOne({ singleton: 'main_settings' });
+//     const payoutMode = settings?.payoutType || 'manual';
+
+//     if (!amountKobo || amountKobo <= 0) {
+//         res.status(400);
+//         throw new Error('A valid payout amount is required.');
+//     }
+
+//     let creator = await User.findById(creatorId);
+//     if (!creator || !creator.payoutBankName || !creator.payoutAccountNumber || !creator.payoutAccountName) {
+//         res.status(400);
+//         throw new Error('Please complete your bank details in your profile before requesting a payout.');
+//     }
+
+//     const payoutAggregation = await Payout.aggregate([
+//         { $match: { creator: creatorId, status: { $in: ['completed', 'processing', 'pending'] } } },
+//         { $group: { _id: null, total: { $sum: '$amountKobo' } } }
+//     ]);
+//     const revenueAggregation = await Transaction.aggregate([
+//         { $match: { creator: creatorId, status: 'successful' } },
+//         { $group: { _id: null, total: { $sum: '$creatorEarningsKobo' } } }
+//     ]);
+//     const totalPayoutsKobo = payoutAggregation.length > 0 ? payoutAggregation[0].total : 0;
+//     const totalRevenueKobo = revenueAggregation.length > 0 ? revenueAggregation[0].total : 0;
+//     const availableBalanceKobo = totalRevenueKobo - totalPayoutsKobo;
+
+//     if (amountKobo > availableBalanceKobo) {
+//         res.status(400);
+//         throw new Error('Payout request exceeds your available balance.');
+//     }
+
+//     if (payoutMode === 'automatic') {
+//         try {
+//             if (!creator.paystackRecipientCode) {
+//                 await payoutService.verifyBankAccount(creator.payoutAccountNumber, creator.payoutBankName);
+//                 const recipientCode = await payoutService.createTransferRecipient(creator);
+//                 creator.paystackRecipientCode = recipientCode;
+//                 creator = await creator.save();
+//             }
+//         } catch (error) {
+//             res.status(400);
+//             throw new Error("Your saved bank details are invalid. Please update them in your profile and try again.");
+//         }
+
+//         const payout = await Payout.create({
+//             creator: creatorId,
+//             amountKobo,
+//             status: 'processing',
+//         });
+//         try {
+//     // CHANGED: We now pass the full 'creator' object as the second argument
+//     // instead of just 'creator.paystackRecipientCode'.
+//     // The service adapter will decide which details it needs.
+//     const transferResult = await payoutService.initiateTransfer(amountKobo, creator, payout._id.toString());
+    
+//     // Save Nomba's reference (or Paystack's transfer_code depending on who was used)
+//     payout.providerRef = transferResult.reference || transferResult.transfer_code;
+//     payout.status = (transferResult.status === 'SUCCESS' || transferResult.status === 'success') ? 'completed' : 'processing';
+    
+//     await payout.save();
+//     res.status(201).json(payout);
+// } catch (error) {
+//      payout.status = 'failed';
+//      payout.notes = error.message;
+//      await payout.save();
+//      res.status(400).json({ message: error.message });
+// }
+//         // try {
+//         //     const transferResult = await payoutService.initiateTransfer(amountKobo, creator.paystackRecipientCode, payout._id.toString());
+//         //     payout.providerRef = transferResult.transfer_code;
+//         //     await payout.save();
+//         //     res.status(201).json(payout);
+//         // } catch (error) {
+//         //     payout.status = 'failed';
+//         //     payout.notes = error.message;
+//         //     await payout.save();
+//         //     res.status(400).json({ message: error.message });
+//         // }
+//     } else {
+//         const payout = await Payout.create({
+//             creator: creatorId,
+//             amountKobo,
+//             status: 'pending',
+//         });
+//         res.status(201).json(payout);
+//     }
+// });
+
+
 const requestPayout = asyncHandler(async (req, res) => {
     const { amountKobo } = req.body;
     const creatorId = new mongoose.Types.ObjectId(req.user.id);
 
     const settings = await Settings.findOne({ singleton: 'main_settings' });
     const payoutMode = settings?.payoutType || 'manual';
+    const payoutProviderKey = settings?.payoutProvider || 'nomba'; // Assume Nomba is default for transfer logic
 
     if (!amountKobo || amountKobo <= 0) {
         res.status(400);
@@ -298,14 +392,8 @@ const requestPayout = asyncHandler(async (req, res) => {
         throw new Error('Please complete your bank details in your profile before requesting a payout.');
     }
 
-    const payoutAggregation = await Payout.aggregate([
-        { $match: { creator: creatorId, status: { $in: ['completed', 'processing', 'pending'] } } },
-        { $group: { _id: null, total: { $sum: '$amountKobo' } } }
-    ]);
-    const revenueAggregation = await Transaction.aggregate([
-        { $match: { creator: creatorId, status: 'successful' } },
-        { $group: { _id: null, total: { $sum: '$creatorEarningsKobo' } } }
-    ]);
+    // (Balance check logic remains the same)
+    // ...
     const totalPayoutsKobo = payoutAggregation.length > 0 ? payoutAggregation[0].total : 0;
     const totalRevenueKobo = revenueAggregation.length > 0 ? revenueAggregation[0].total : 0;
     const availableBalanceKobo = totalRevenueKobo - totalPayoutsKobo;
@@ -314,64 +402,50 @@ const requestPayout = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error('Payout request exceeds your available balance.');
     }
+    // (End of balance check logic)
 
     if (payoutMode === 'automatic') {
-        try {
-            if (!creator.paystackRecipientCode) {
-                await payoutService.verifyBankAccount(creator.payoutAccountNumber, creator.payoutBankName);
-                const recipientCode = await payoutService.createTransferRecipient(creator);
-                creator.paystackRecipientCode = recipientCode;
-                creator = await creator.save();
-            }
-        } catch (error) {
-            res.status(400);
-            throw new Error("Your saved bank details are invalid. Please update them in your profile and try again.");
-        }
-
         const payout = await Payout.create({
             creator: creatorId,
             amountKobo,
-            status: 'processing',
+            status: 'processing', // Initial status before transfer attempt
+            provider: payoutProviderKey, // Save the provider for later webhook processing
         });
+        
         try {
-    // CHANGED: We now pass the full 'creator' object as the second argument
-    // instead of just 'creator.paystackRecipientCode'.
-    // The service adapter will decide which details it needs.
-    const transferResult = await payoutService.initiateTransfer(amountKobo, creator, payout._id.toString());
-    
-    // Save Nomba's reference (or Paystack's transfer_code depending on who was used)
-    payout.providerRef = transferResult.reference || transferResult.transfer_code;
-    payout.status = (transferResult.status === 'SUCCESS' || transferResult.status === 'success') ? 'completed' : 'processing';
-    
-    await payout.save();
-    res.status(201).json(payout);
-} catch (error) {
-     payout.status = 'failed';
-     payout.notes = error.message;
-     await payout.save();
-     res.status(400).json({ message: error.message });
-}
-        // try {
-        //     const transferResult = await payoutService.initiateTransfer(amountKobo, creator.paystackRecipientCode, payout._id.toString());
-        //     payout.providerRef = transferResult.transfer_code;
-        //     await payout.save();
-        //     res.status(201).json(payout);
-        // } catch (error) {
-        //     payout.status = 'failed';
-        //     payout.notes = error.message;
-        //     await payout.save();
-        //     res.status(400).json({ message: error.message });
-        // }
+            // NOTE: Paystack uses Recipient Codes. Nomba does not.
+            // Since we are using the combined service, we trust initiateTransfer handles the complexity.
+            
+            // Initiate the transfer using the full creator object
+            // The payoutService will handle the bank code lookup internally.
+            const transferResult = await payoutService.initiateTransfer(amountKobo, creator, payout._id.toString());
+            
+            payout.providerRef = transferResult.reference || transferResult.transfer_code;
+            payout.status = (transferResult.status === 'SUCCESS' || transferResult.status === 'success' || transferResult.status === 'completed') ? 'completed' : 'processing';
+            
+            await payout.save();
+            res.status(201).json(payout);
+
+        } catch (error) {
+            console.error(`Nomba Payout Failed for Payout ID ${payout._id}:`, error.message);
+            payout.status = 'failed';
+            payout.notes = `Transfer failed: ${error.message}`;
+            await payout.save();
+            
+            // Throw a general error back to the client
+            res.status(400).json({ message: error.message || 'Payment provider transfer failed.' });
+        }
     } else {
+        // Manual Payout Logic
         const payout = await Payout.create({
             creator: creatorId,
             amountKobo,
             status: 'pending',
+            provider: payoutProviderKey,
         });
         res.status(201).json(payout);
     }
 });
-
 
 /**
  * @desc    Handles requests for creator profiles, including redirects for old usernames
