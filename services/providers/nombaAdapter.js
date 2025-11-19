@@ -250,9 +250,7 @@ const initiateTransfer = async (amountKobo, recipientCode, payoutId, creatorDeta
         const bankList = await getBankList(); 
         
         // 2. Find the matching bank code
-        // NOTE: The frontend fix ensures payoutBankName is the full bank name (e.g., "PAYCOM (OPAY)")
         const creatorBankName = creatorDetails.payoutBankName.toUpperCase();
-        // Ensure case-insensitive matching in case of minor bank name variations
         const matchingBank = bankList.find(bank => bank.name.toUpperCase() === creatorBankName); 
         
         if (!matchingBank) {
@@ -264,42 +262,56 @@ const initiateTransfer = async (amountKobo, recipientCode, payoutId, creatorDeta
         // Nomba prefers amounts as strings with 2 decimal places (e.g., "100.00")
         const amountNaira = (amountKobo / 100).toFixed(2);
 
+        // Use a robust reference
+        const myTxRef = `PAYOUT-${payoutId}`;
+
         const payload = {
             amount: amountNaira,
             accountNumber: creatorDetails.payoutAccountNumber,
             accountName: creatorDetails.payoutAccountName,
-            bankCode: bankCodeToSend, // <-- Using the correctly looked up code (e.g., 305)
-            merchantTxRef: `PAYOUT-${payoutId}`,
+            bankCode: bankCodeToSend,
+            merchantTxRef: myTxRef,
             senderName: "AwaStream Inc",
             narration: `Payout for AwaStream Sales`
         };
 
         // Transfer Endpoint: POST /v1/transfers/bank
         const response = await axios.post(`${BASE_URL}/transfers/bank`, payload, config);
+        const responseBody = response.data;
 
-        if (response.data.code === '00' && response.data.data) {
-            const nombaStatus = response.data.data.status;
+        // Log the raw response for debugging
+        console.log(`[Nomba Transfer] Response Code: ${responseBody.code}, Desc: ${responseBody.description}`);
+
+        // --- FIX START: Accept '00' OR 'Processing' description ---
+        // Sometimes Nomba returns a non-00 code (like '09') with description 'Processing'. 
+        // We must treat this as a valid PENDING state, not an error.
+        const isSuccessCode = responseBody.code === '00';
+        const isProcessingDesc = responseBody.description && responseBody.description.toLowerCase() === 'processing';
+
+        if (isSuccessCode || isProcessingDesc) {
+            const nombaData = responseBody.data || {}; 
+            const nombaStatus = nombaData.status || 'PROCESSING';
+            
             let internalStatus = 'failed';
             
-            // --- FIX: Correctly Map Nomba's Status to Internal Status ---
             if (nombaStatus === 'SUCCESS') {
                 internalStatus = 'successful';
-            } else if (nombaStatus === 'PROCESSING' || nombaStatus === 'PENDING') {
-                // If Nomba returns 'PROCESSING', we mark it as 'pending' internally.
-                // The webhook will handle the final transition to 'successful' or 'failed'.
+            } else if (nombaStatus === 'PROCESSING' || nombaStatus === 'PENDING' || isProcessingDesc) {
                 internalStatus = 'pending';
             }
-            // --- END FIX ---
 
+            // Fallback values if data object is missing (common in 'Processing' responses)
             return {
-                // Use RRN if available, otherwise fallback to the transfer ID
-                reference: response.data.data.meta?.rrn || response.data.data.id, 
+                reference: nombaData.meta?.rrn || nombaData.id || myTxRef, 
                 status: internalStatus, 
-                gateway_id: response.data.data.id
+                gateway_id: nombaData.id || myTxRef
             };
-        } else {
-            // If Nomba returns a non-00 code, it's a hard decline.
-            throw new Error(response.data.description || "Transfer declined by Nomba.");
+        } 
+        // --- FIX END ---
+        
+        else {
+            // Only throw if it's truly a failure (not 00 and not Processing)
+            throw new Error(responseBody.description || "Transfer declined by Nomba.");
         }
     } catch (error) {
         console.error("Nomba Transfer Error:", error.response?.data || error.message);
