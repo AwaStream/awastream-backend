@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Video = require('../models/Video');
 const Transaction = require('../models/Transaction');
+const payoutService = require('../services/payoutService');
 const Payout = require('../models/Payout');
 
 
@@ -187,6 +188,52 @@ const rejectPayout = asyncHandler(async (req, res) => {
 });
 
 
+// @desc    Verify a payout status manually via Provider API
+// @route   PUT /api/v1/admin/payouts/:id/verify
+// @access  Private (Admin)
+const verifyPayoutStatus = asyncHandler(async (req, res) => {
+    const payoutId = req.params.id;
+    const payout = await Payout.findById(payoutId);
+
+    if (!payout) {
+        res.status(404);
+        throw new Error('Payout not found');
+    }
+
+    // Since this is an admin route, we don't need to check if req.user.id matches creator
+    
+    if (payout.status === 'successful' || payout.status === 'failed') {
+        return res.json({ message: 'Payout is already finalized', payout });
+    }
+
+    try {
+        // Call the service to check the provider
+        const verification = await payoutService.verifyTransfer(payoutId);
+        
+        if (verification && verification.status) {
+            if (verification.status === 'successful') {
+                payout.status = 'successful';
+                payout.processedAt = new Date();
+                payout.notes = 'Verified manually by Admin';
+                await payout.save();
+            } else if (verification.status === 'failed') {
+                payout.status = 'failed';
+                payout.notes = 'Verification returned failed status';
+                await payout.save();
+            }
+        }
+
+        res.json({ 
+            message: 'Payout verification attempt complete', 
+            payout 
+        });
+
+    } catch (error) {
+        console.error("Admin Payout Verification Failed:", error);
+        res.status(400).json({ message: 'Could not verify payout status at this time.' });
+    }
+});
+
 // @desc    Update a user's status
 // @route   PUT /api/v1/admin/users/:id/status
 // @access  Private (Superadmin)
@@ -308,6 +355,7 @@ module.exports = {
     getPayouts,
     approvePayout,
     rejectPayout,
+    verifyPayoutStatus,
     getAllUsers,
     updateUserStatus,
     getCreatorDetails,
