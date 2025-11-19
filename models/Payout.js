@@ -9,7 +9,7 @@ const PayoutSchema = new mongoose.Schema({
     amountKobo: { type: Number, required: true },
     status: {
         type: String,
-        enum: ['pending', 'processing', 'completed', 'failed', 'rejected'],
+        enum: ['pending', 'processing', 'successful', 'completed', 'failed', 'rejected'],
         default: 'pending'
     },
     // Reference from the disbursement provider (e.g., Paystack).
